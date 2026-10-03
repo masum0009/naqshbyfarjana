@@ -18,6 +18,7 @@ import confetti from 'canvas-confetti';
 import { useCart } from '@/lib/cart-context';
 import { DELIVERY_ZONES, BRAND_INFO } from '@/lib/products-data';
 import { formatPrice, generateOrderNumber } from '@/lib/utils';
+import { submitOrder } from '@/lib/api-helpers';
 import { PaymentMethod, DeliveryZoneOption } from '@/types';
 
 export default function CheckoutPage() {
@@ -114,19 +115,7 @@ export default function CheckoutPage() {
     };
 
     try {
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(orderPayload),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to place order.');
-      }
+      await submitOrder(orderPayload);
 
       // Confetti celebration
       try {

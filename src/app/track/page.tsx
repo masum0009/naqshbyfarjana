@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { BRAND_INFO } from '@/lib/products-data';
 import { formatPrice } from '@/lib/utils';
+import { trackOrder } from '@/lib/api-helpers';
 import { Order, OrderStatus } from '@/types';
 
 function TrackContent() {
@@ -35,20 +36,9 @@ function TrackContent() {
     setOrder(null);
 
     try {
-      // Check local storage first
-      const local = localStorage.getItem(`order_${queryToSearch.trim()}`);
-      if (local) {
-        setOrder(JSON.parse(local));
-        setLoading(false);
-        return;
-      }
-
-      // Query API
-      const res = await fetch(`/api/track?query=${encodeURIComponent(queryToSearch.trim())}`);
-      const data = await res.json();
-
-      if (res.ok && data.order) {
-        setOrder(data.order);
+      const found = await trackOrder(queryToSearch.trim());
+      if (found) {
+        setOrder(found);
       } else {
         setNotFound(true);
       }
