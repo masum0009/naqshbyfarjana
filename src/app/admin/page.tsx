@@ -26,6 +26,14 @@ import {
 } from 'lucide-react';
 import { BRAND_INFO, INITIAL_PRODUCTS, CATEGORIES } from '@/lib/products-data';
 import { formatPrice } from '@/lib/utils';
+import {
+  fetchProducts,
+  fetchOrders,
+  saveProduct,
+  updateProduct,
+  deleteProduct,
+  updateOrderStatus,
+} from '@/lib/api-helpers';
 import { Order, OrderStatus, Product } from '@/types';
 
 export default function AdminDashboardPage() {
@@ -87,17 +95,9 @@ export default function AdminDashboardPage() {
 
   const loadProducts = async () => {
     try {
-      const saved = localStorage.getItem('naqsh_custom_products');
-      if (saved) {
-        setProducts(JSON.parse(saved));
-        return;
-      }
-      const res = await fetch('/api/admin/products');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.products && data.products.length > 0) {
-          setProducts(data.products);
-        }
+      const data = await fetchProducts();
+      if (data && data.length > 0) {
+        setProducts(data);
       }
     } catch (e) {
       console.error(e);
@@ -107,42 +107,8 @@ export default function AdminDashboardPage() {
   const loadOrders = async () => {
     setLoading(true);
     try {
-      // 1. Check local storage orders
-      const localOrders: Order[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('order_')) {
-          try {
-            const data = JSON.parse(localStorage.getItem(key) || '{}');
-            if (data.order_number) localOrders.push(data);
-          } catch (e) {}
-        }
-      }
-
-      // 2. Fetch from API
-      const res = await fetch('/api/admin/orders');
-      if (res.ok) {
-        const data = await res.json();
-        const apiOrders = data.orders || [];
-        // Merge without duplicates
-        const combined = [...localOrders];
-        apiOrders.forEach((ao: Order) => {
-          if (!combined.some((c) => c.order_number === ao.order_number)) {
-            combined.push(ao);
-          }
-        });
-        setOrders(
-          combined.sort(
-            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          )
-        );
-      } else {
-        setOrders(
-          localOrders.sort(
-            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          )
-        );
-      }
+      const data = await fetchOrders();
+      setOrders(data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -154,25 +120,7 @@ export default function AdminDashboardPage() {
     setOrders((prev) =>
       prev.map((o) => (o.order_number === orderNumber ? { ...o, order_status: newStatus } : o))
     );
-
-    // Update in localStorage
-    try {
-      const saved = localStorage.getItem(`order_${orderNumber}`);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        parsed.order_status = newStatus;
-        localStorage.setItem(`order_${orderNumber}`, JSON.stringify(parsed));
-      }
-    } catch (e) {}
-
-    // Update via API
-    try {
-      await fetch('/api/admin/orders', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order_number: orderNumber, order_status: newStatus }),
-      });
-    } catch (e) {}
+    await updateOrderStatus(orderNumber, newStatus);
   };
 
   const handleAddProduct = async (e: React.FormEvent) => {
@@ -192,8 +140,7 @@ export default function AdminDashboardPage() {
         ? combinedImages
         : ['https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=900&q=80'];
 
-    const productPayload: Product = {
-      id: `prod-${Date.now()}`,
+    const productPayload: Partial<Product> = {
       title: newTitle.trim(),
       slug: newTitle.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
       description: newDescription.trim() || 'Bespoke handloom artisan piece curated by Farjana.',
@@ -212,20 +159,12 @@ export default function AdminDashboardPage() {
       sku: newSku.trim(),
     };
 
-    const updated = [productPayload, ...products];
-    setProducts(updated);
-
-    try {
-      localStorage.setItem('naqsh_custom_products', JSON.stringify(updated));
-    } catch (e) {}
-
-    try {
-      await fetch('/api/admin/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(productPayload),
-      });
-    } catch (e) {}
+    const res = await saveProduct(productPayload);
+    if (res.data) {
+      setProducts((prev) => [res.data!, ...prev]);
+    } else {
+      await loadProducts();
+    }
 
     setIsAddProductOpen(false);
     setNewTitle('');
@@ -284,55 +223,34 @@ export default function AdminDashboardPage() {
       stock_count: Number(editStock),
     };
 
-    const updated = products.map((p) =>
-      p.id === editingProduct.id ? updatedProduct : p
+    setProducts((prev) =>
+      prev.map((p) => (p.id === editingProduct.id ? updatedProduct : p))
     );
-    setProducts(updated);
 
-    try {
-      localStorage.setItem('naqsh_custom_products', JSON.stringify(updated));
-    } catch (e) {}
-
-    try {
-      await fetch('/api/admin/products', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedProduct),
-      });
-    } catch (e) {}
-
+    await updateProduct(updatedProduct);
     setEditingProduct(null);
   };
 
   const handleDeleteProduct = async (productId: string) => {
     if (!confirm('Are you sure you want to remove this outfit from the boutique?')) return;
 
-    const updated = products.filter((p) => p.id !== productId);
-    setProducts(updated);
-
-    try {
-      localStorage.setItem('naqsh_custom_products', JSON.stringify(updated));
-    } catch (e) {}
-
-    try {
-      await fetch(`/api/admin/products?id=${productId}`, {
-        method: 'DELETE',
-      });
-    } catch (e) {}
+    setProducts((prev) => prev.filter((p) => p.id !== productId));
+    await deleteProduct(productId);
 
     if (editingProduct?.id === productId) {
       setEditingProduct(null);
     }
   };
 
-  const handleToggleStock = (productId: string) => {
-    const updated = products.map((p) =>
-      p.id === productId ? { ...p, in_stock: !p.in_stock } : p
+  const handleToggleStock = async (productId: string) => {
+    const target = products.find((p) => p.id === productId);
+    if (!target) return;
+
+    const updated = { ...target, in_stock: !target.in_stock };
+    setProducts((prev) =>
+      prev.map((p) => (p.id === productId ? updated : p))
     );
-    setProducts(updated);
-    try {
-      localStorage.setItem('naqsh_custom_products', JSON.stringify(updated));
-    } catch (e) {}
+    await updateProduct(updated);
   };
 
   const filteredOrders = orders.filter((o) => {

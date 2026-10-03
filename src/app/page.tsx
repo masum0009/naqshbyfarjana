@@ -18,10 +18,26 @@ import FeaturedCategories from '@/components/FeaturedCategories';
 import ProductCard from '@/components/ProductCard';
 import FacebookPageBadge from '@/components/FacebookPageBadge';
 import { INITIAL_PRODUCTS, BRAND_INFO } from '@/lib/products-data';
+import { fetchProducts } from '@/lib/api-helpers';
+import { Product } from '@/types';
 
 export default function HomePage() {
-  const bestSellers = INITIAL_PRODUCTS.filter((p) => p.is_bestseller).slice(0, 4);
-  const newArrivals = INITIAL_PRODUCTS.filter((p) => p.is_new_arrival).slice(0, 4);
+  const [products, setProducts] = React.useState<Product[]>(INITIAL_PRODUCTS);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    fetchProducts().then((data) => {
+      if (isMounted && data && data.length > 0) {
+        setProducts(data);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const bestSellers = products.filter((p) => p.is_bestseller).slice(0, 4);
+  const newArrivals = products.filter((p) => p.is_new_arrival).slice(0, 4);
 
   const testimonials = [
     {

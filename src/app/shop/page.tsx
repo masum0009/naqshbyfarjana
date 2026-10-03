@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
 import { INITIAL_PRODUCTS, CATEGORIES } from '@/lib/products-data';
+import { fetchProducts } from '@/lib/api-helpers';
 import { Product } from '@/types';
 
 function ShopContent() {
@@ -37,22 +38,17 @@ function ShopContent() {
     setSearchQuery(search);
   }, [searchParams]);
 
-  // Load custom products from localStorage if any
+  // Load products live from Supabase / cache
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('naqsh_custom_products');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setProductsList(parsed);
-          return;
-        }
+    let isMounted = true;
+    fetchProducts().then((data) => {
+      if (isMounted && data && data.length > 0) {
+        setProductsList(data);
       }
-      setProductsList(INITIAL_PRODUCTS);
-    } catch (e) {
-      console.error(e);
-      setProductsList(INITIAL_PRODUCTS);
-    }
+    });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Handle category change and update URL

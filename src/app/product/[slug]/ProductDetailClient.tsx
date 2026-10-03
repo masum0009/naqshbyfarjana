@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { FacebookIcon } from '@/components/Icons';
 import { INITIAL_PRODUCTS, BRAND_INFO } from '@/lib/products-data';
+import { fetchProducts } from '@/lib/api-helpers';
 import { Product } from '@/types';
 import { useCart } from '@/lib/cart-context';
 import { formatPrice, buildWhatsAppOrderLink } from '@/lib/utils';
@@ -31,15 +32,15 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
   const [productsList, setProductsList] = useState<Product[]>(INITIAL_PRODUCTS);
 
   React.useEffect(() => {
-    try {
-      const saved = localStorage.getItem('naqsh_custom_products');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setProductsList(parsed);
-        }
+    let isMounted = true;
+    fetchProducts().then((data) => {
+      if (isMounted && data && data.length > 0) {
+        setProductsList(data);
       }
-    } catch (e) {}
+    });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const product =
