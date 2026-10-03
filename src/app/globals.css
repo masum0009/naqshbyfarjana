@@ -1,26 +1,119 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-luxury: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  
+  --primary: #781326; /* Royal Burgundy */
+  --primary-dark: #500a18;
+  --primary-light: #9e1f36;
+  
+  --gold: #c99834; /* Imperial Gold */
+  --gold-light: #f3df9f;
+  --gold-dark: #9e721a;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --emerald: #0b4e39;
+  --emerald-light: #167a5b;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --silk: #fbf8f3;
+  --silk-subtle: #f4eee2;
+  --silk-border: #e8dece;
+
+  --dark: #121013;
+  --dark-surface: #1e1b20;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--silk);
+  color: var(--dark);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.font-luxury {
+  font-family: var(--font-luxury);
+}
+
+.font-sans {
+  font-family: var(--font-sans);
+}
+
+/* Shimmer & Gold Gradients */
+.gold-gradient-text {
+  background: linear-gradient(135deg, #dfb448 0%, #a6751c 50%, #f6e2a2 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gold-gradient-bg {
+  background: linear-gradient(135deg, #c99834 0%, #a27419 100%);
+}
+
+.gold-border {
+  border-color: #d9af4f;
+}
+
+.royal-gradient-bg {
+  background: linear-gradient(135deg, #600c1c 0%, #85182d 60%, #460813 100%);
+}
+
+.dark-gradient-bg {
+  background: linear-gradient(180deg, #18151b 0%, #0d0c0e 100%);
+}
+
+/* Glassmorphism */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(217, 175, 79, 0.25);
+}
+
+.glass-panel-dark {
+  background: rgba(20, 18, 22, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(217, 175, 79, 0.3);
+}
+
+/* Custom Luxury Scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+}
+::-webkit-scrollbar-track {
+  background: #f4eee2;
+}
+::-webkit-scrollbar-thumb {
+  background: #c99834;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #781326;
+}
+
+/* Luxury animations */
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-float-slow {
+  animation: floatSlow 4s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 15px rgba(201, 152, 52, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(201, 152, 52, 0.6); }
+}
+
+.glow-gold {
+  animation: pulseGlow 3s ease-in-out infinite;
 }
