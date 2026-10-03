@@ -13,8 +13,8 @@ import {
 } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
 import { INITIAL_PRODUCTS, CATEGORIES } from '@/lib/products-data';
-import { fetchProducts } from '@/lib/api-helpers';
-import { Product } from '@/types';
+import { fetchProducts, fetchCategories } from '@/lib/api-helpers';
+import { Product, Category } from '@/types';
 
 function ShopContent() {
   const router = useRouter();
@@ -29,6 +29,7 @@ function ShopContent() {
   const [priceMax, setPriceMax] = useState<number>(50000);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState<boolean>(false);
   const [productsList, setProductsList] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [categoriesList, setCategoriesList] = useState<Category[]>(CATEGORIES);
 
   // Sync state whenever searchParams changes (e.g. clicking header links)
   useEffect(() => {
@@ -38,12 +39,17 @@ function ShopContent() {
     setSearchQuery(search);
   }, [searchParams]);
 
-  // Load products live from Supabase / cache
+  // Load products and categories live from Supabase / cache
   useEffect(() => {
     let isMounted = true;
     fetchProducts().then((data) => {
       if (isMounted && data && data.length > 0) {
         setProductsList(data);
+      }
+    });
+    fetchCategories().then((cats) => {
+      if (isMounted && cats && cats.length > 0) {
+        setCategoriesList(cats);
       }
     });
     return () => {
@@ -156,7 +162,7 @@ function ShopContent() {
         >
           All Items ({productsList.length})
         </button>
-        {CATEGORIES.map((cat) => (
+        {categoriesList.map((cat) => (
           <button
             key={cat.id}
             onClick={() => handleCategorySelect(cat.slug)}

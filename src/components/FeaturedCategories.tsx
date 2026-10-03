@@ -1,9 +1,26 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { CATEGORIES } from '@/lib/products-data';
+import { fetchCategories } from '@/lib/api-helpers';
+import { Category } from '@/types';
 
 export default function FeaturedCategories() {
+  const [categories, setCategories] = useState<Category[]>(CATEGORIES);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchCategories().then((data) => {
+      if (isMounted && data && data.length > 0) {
+        setCategories(data);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   return (
     <section className="py-16 bg-[#fbf8f3]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -23,7 +40,7 @@ export default function FeaturedCategories() {
 
         {/* Categories Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {CATEGORIES.map((category) => (
+          {categories.map((category) => (
             <Link
               key={category.id}
               href={`/shop?category=${category.slug}`}

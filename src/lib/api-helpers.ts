@@ -1,6 +1,35 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import { INITIAL_PRODUCTS, CATEGORIES } from './products-data';
-import { Order, OrderStatus, Product } from '@/types';
+import { Order, OrderStatus, Product, Category } from '@/types';
+
+function mapSupabaseCategory(c: any): Category {
+  return {
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+    description: c.description || '',
+    image: c.image_url || c.image || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80',
+    item_count: c.item_count,
+  };
+}
+
+export async function fetchCategories(): Promise<Category[]> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('display_order', { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        return data.map(mapSupabaseCategory);
+      }
+    } catch (e) {
+      console.warn('Supabase fetchCategories warning:', e);
+    }
+  }
+  return CATEGORIES;
+}
 
 function mapSupabaseProduct(p: any): Product {
   return {
