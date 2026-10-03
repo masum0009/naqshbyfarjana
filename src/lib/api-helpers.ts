@@ -31,6 +31,93 @@ export async function fetchCategories(): Promise<Category[]> {
   return CATEGORIES;
 }
 
+export async function saveCategory(category: Partial<Category> & { display_order?: number }): Promise<{ success: boolean; data?: Category }> {
+  const cleanCategory = {
+    name: category.name?.trim() || '',
+    slug: category.slug?.trim() || category.name?.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `cat-${Date.now()}`,
+    description: category.description?.trim() || '',
+    image_url: category.image || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80',
+    display_order: category.display_order !== undefined ? Number(category.display_order) : 10,
+  };
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .insert([cleanCategory])
+        .select()
+        .single();
+
+      if (!error && data) {
+        return { success: true, data: mapSupabaseCategory(data) };
+      } else if (error) {
+        console.error('Supabase saveCategory error:', error);
+      }
+    } catch (e) {
+      console.warn('Supabase saveCategory exception:', e);
+    }
+  }
+
+  const localCat: Category = {
+    id: `cat-${Date.now()}`,
+    name: cleanCategory.name,
+    slug: cleanCategory.slug,
+    description: cleanCategory.description,
+    image: cleanCategory.image_url,
+  };
+  return { success: true, data: localCat };
+}
+
+export async function updateCategory(category: Category & { display_order?: number }): Promise<{ success: boolean; data?: Category }> {
+  const cleanPayload: any = {
+    name: category.name.trim(),
+    slug: category.slug.trim(),
+    description: category.description.trim(),
+    image_url: category.image,
+  };
+  if (category.display_order !== undefined) {
+    cleanPayload.display_order = Number(category.display_order);
+  }
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .update(cleanPayload)
+        .eq('id', category.id)
+        .select()
+        .single();
+
+      if (!error && data) {
+        return { success: true, data: mapSupabaseCategory(data) };
+      } else if (error) {
+        console.error('Supabase updateCategory error:', error);
+      }
+    } catch (e) {
+      console.warn('Supabase updateCategory exception:', e);
+    }
+  }
+
+  return { success: true, data: category };
+}
+
+export async function deleteCategory(categoryId: string): Promise<{ success: boolean }> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', categoryId);
+      if (error) {
+        console.error('Supabase deleteCategory error:', error);
+      }
+    } catch (e) {
+      console.warn('Supabase deleteCategory exception:', e);
+    }
+  }
+  return { success: true };
+}
+
 function mapSupabaseProduct(p: any): Product {
   return {
     id: p.id,

@@ -29,22 +29,28 @@ import { formatPrice } from '@/lib/utils';
 import {
   fetchProducts,
   fetchOrders,
+  fetchCategories,
   saveProduct,
   updateProduct,
   deleteProduct,
+  saveCategory,
+  updateCategory,
+  deleteCategory,
   updateOrderStatus,
 } from '@/lib/api-helpers';
-import { Order, OrderStatus, Product } from '@/types';
+import { Order, OrderStatus, Product, Category } from '@/types';
 
 export default function AdminDashboardPage() {
   const [pin, setPin] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'analytics'>('orders');
+  const [categories, setCategories] = useState<Category[]>(CATEGORIES);
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'categories'>('orders');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [orderSearchQuery, setOrderSearchQuery] = useState<string>('');
   const [productSearchQuery, setProductSearchQuery] = useState<string>('');
+  const [categorySearchQuery, setCategorySearchQuery] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
   // New product modal state
@@ -79,6 +85,23 @@ export default function AdminDashboardPage() {
   const [editStock, setEditStock] = useState<number>(10);
   const [editDescription, setEditDescription] = useState('');
 
+  // Category modal states
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatSlug, setNewCatSlug] = useState('');
+  const [newCatDescription, setNewCatDescription] = useState('');
+  const [newCatImage, setNewCatImage] = useState(
+    'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=800&q=80'
+  );
+  const [newCatDisplayOrder, setNewCatDisplayOrder] = useState<number>(1);
+
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editCatName, setEditCatName] = useState('');
+  const [editCatSlug, setEditCatSlug] = useState('');
+  const [editCatDescription, setEditCatDescription] = useState('');
+  const [editCatImage, setEditCatImage] = useState('');
+  const [editCatDisplayOrder, setEditCatDisplayOrder] = useState<number>(1);
+
   // Default admin PIN for local setup (or configurable via env)
   const ADMIN_PASS = 'naqsh2026';
 
@@ -88,8 +111,20 @@ export default function AdminDashboardPage() {
       setIsAuthenticated(true);
       loadOrders();
       loadProducts();
+      loadCategories();
     } else {
       alert('Incorrect Admin Passcode. Please check your credentials (Default: naqsh2026).');
+    }
+  };
+
+  const loadCategories = async () => {
+    try {
+      const data = await fetchCategories();
+      if (data && data.length > 0) {
+        setCategories(data);
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -113,6 +148,72 @@ export default function AdminDashboardPage() {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const slug =
+      newCatSlug.trim() ||
+      newCatName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+    const res = await saveCategory({
+      name: newCatName.trim(),
+      slug,
+      description: newCatDescription.trim(),
+      image: newCatImage.trim(),
+      display_order: Number(newCatDisplayOrder),
+    });
+
+    if (res.data) {
+      setCategories((prev) => [...prev, res.data!]);
+    } else {
+      await loadCategories();
+    }
+
+    setIsAddCategoryOpen(false);
+    setNewCatName('');
+    setNewCatSlug('');
+    setNewCatDescription('');
+  };
+
+  const handleOpenEditCategory = (cat: Category) => {
+    setEditingCategory(cat);
+    setEditCatName(cat.name);
+    setEditCatSlug(cat.slug);
+    setEditCatDescription(cat.description || '');
+    setEditCatImage(cat.image);
+    setEditCatDisplayOrder((cat as any).display_order || 1);
+  };
+
+  const handleSaveEditedCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCategory) return;
+
+    const updatedCat: Category = {
+      ...editingCategory,
+      name: editCatName.trim(),
+      slug: editCatSlug.trim(),
+      description: editCatDescription.trim(),
+      image: editCatImage.trim(),
+    };
+
+    setCategories((prev) =>
+      prev.map((c) => (c.id === editingCategory.id ? updatedCat : c))
+    );
+
+    await updateCategory({ ...updatedCat, display_order: Number(editCatDisplayOrder) });
+    setEditingCategory(null);
+  };
+
+  const handleDeleteCategory = async (catId: string) => {
+    if (!confirm('Are you sure you want to remove this collection/category from the boutique?')) return;
+
+    setCategories((prev) => prev.filter((c) => c.id !== catId));
+    await deleteCategory(catId);
+
+    if (editingCategory?.id === catId) {
+      setEditingCategory(null);
     }
   };
 
@@ -279,6 +380,18 @@ export default function AdminDashboardPage() {
     return true;
   });
 
+  const filteredCategoriesList = categories.filter((c) => {
+    if (categorySearchQuery.trim()) {
+      const q = categorySearchQuery.toLowerCase();
+      return (
+        c.name.toLowerCase().includes(q) ||
+        c.slug.toLowerCase().includes(q) ||
+        c.description.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
   const totalRevenue = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
   const pendingOrders = orders.filter((o) => o.order_status === 'pending').length;
   const deliveredOrders = orders.filter((o) => o.order_status === 'delivered').length;
@@ -412,7 +525,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex gap-2 border-b border-[#e8dece] pb-2">
+      <div className="flex flex-wrap gap-2 border-b border-[#e8dece] pb-2">
         <button
           onClick={() => setActiveTab('orders')}
           className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -432,6 +545,16 @@ export default function AdminDashboardPage() {
           }`}
         >
           Catalog & Stock Control ({products.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('categories')}
+          className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'categories'
+              ? 'bg-[#781326] text-[#f5e6a8] shadow-md'
+              : 'bg-white text-gray-600 hover:text-black border border-[#e8dece]'
+          }`}
+        >
+          Collections & Categories ({categories.length})
         </button>
       </div>
 
@@ -731,6 +854,106 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* 3. Categories & Collections Tab */}
+      {activeTab === 'categories' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white rounded-2xl border border-[#e8dece]">
+            <div className="text-xs text-[#6e686c]">
+              Boutique Collections: <strong>{filteredCategoriesList.length}</strong> active categories
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="relative min-w-[240px]">
+                <input
+                  type="text"
+                  placeholder="Search collection name, slug..."
+                  value={categorySearchQuery}
+                  onChange={(e) => setCategorySearchQuery(e.target.value)}
+                  className="w-full px-3 py-2 pl-9 text-xs rounded-xl border border-[#e8dece] bg-[#fbf8f3] focus:outline-none focus:ring-1 focus:ring-[#781326]"
+                />
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              </div>
+
+              <button
+                onClick={() => setIsAddCategoryOpen(true)}
+                className="px-4 py-2 rounded-xl bg-[#781326] text-[#f5e6a8] text-xs font-bold shadow-md hover:bg-[#500a18] transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Collection</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCategoriesList.map((cat) => {
+              const count = products.filter((p) => p.category_slug === cat.slug).length;
+              return (
+                <div
+                  key={cat.id}
+                  className="p-5 rounded-3xl bg-white border border-[#e8dece] shadow-xs flex flex-col justify-between space-y-4 hover:border-[#c99834] transition-all relative group"
+                >
+                  <div className="flex gap-4">
+                    <div className="w-20 h-24 rounded-2xl overflow-hidden bg-gray-100 shrink-0 border border-[#e8dece]">
+                      <img
+                        src={cat.image}
+                        alt={cat.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0 text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-[#c99834] font-mono font-bold">
+                          slug: {cat.slug}
+                        </span>
+                      </div>
+                      <h3 className="font-serif font-bold text-sm text-[#141215] truncate">
+                        {cat.name}
+                      </h3>
+                      <p className="text-[11px] text-[#6e686c] line-clamp-2 leading-relaxed">
+                        {cat.description || 'No description added yet.'}
+                      </p>
+                      <p className="text-[10px] font-semibold text-[#781326] pt-0.5">
+                        {count} {count === 1 ? 'Outfit' : 'Outfits'} in store
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Card Action Buttons */}
+                  <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+                    <Link
+                      href={`/shop?category=${cat.slug}`}
+                      target="_blank"
+                      className="text-[11px] font-semibold text-[#781326] hover:underline flex items-center gap-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>View in Shop</span>
+                    </Link>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleOpenEditCategory(cat)}
+                        className="px-3 py-1.5 rounded-xl bg-[#781326] text-[#f5e6a8] text-xs font-bold hover:bg-[#500a18] transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Edit</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteCategory(cat.id)}
+                        className="p-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
+                        title="Delete Collection"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -1248,6 +1471,231 @@ export default function AdminDashboardPage() {
                 >
                   <Plus className="w-4 h-4" />
                   <span>Publish Outfit to Store</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Category Modal */}
+      {editingCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+            onClick={() => setEditingCategory(null)}
+          />
+
+          <div className="relative bg-[#fbf8f3] rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl border border-[#c99834]/40 z-10 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-4 border-b border-[#e8dece]">
+              <div className="flex items-center gap-2 text-[#781326] font-serif font-bold text-xl">
+                <Edit3 className="w-5 h-5 text-[#c99834]" />
+                <span>Edit Collection: {editingCategory.name}</span>
+              </div>
+              <button
+                onClick={() => setEditingCategory(null)}
+                className="p-1 rounded-full text-gray-500 hover:text-black"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditedCategory} className="mt-6 space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
+                  Collection / Category Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editCatName}
+                  onChange={(e) => setEditCatName(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
+                    URL Slug *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editCatSlug}
+                    onChange={(e) => setEditCatSlug(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] font-mono focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
+                    Display Order
+                  </label>
+                  <input
+                    type="number"
+                    value={editCatDisplayOrder}
+                    onChange={(e) => setEditCatDisplayOrder(Number(e.target.value))}
+                    className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
+                  Cover Photo Image URL *
+                </label>
+                <input
+                  type="url"
+                  required
+                  value={editCatImage}
+                  onChange={(e) => setEditCatImage(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                />
+                {editCatImage && (
+                  <div className="mt-2 w-24 h-28 rounded-xl overflow-hidden border border-[#e8dece]">
+                    <img src={editCatImage} alt="Cover preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
+                  Description
+                </label>
+                <textarea
+                  rows={3}
+                  value={editCatDescription}
+                  onChange={(e) => setEditCatDescription(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-3">
+                <button
+                  type="submit"
+                  className="flex-1 py-4 rounded-xl bg-[#781326] text-[#f5e6a8] font-bold text-sm hover:bg-[#500a18] shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Save Collection</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCategory(editingCategory.id)}
+                  className="px-6 py-4 rounded-xl bg-red-50 text-red-600 font-bold text-xs hover:bg-red-100 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add New Category Modal */}
+      {isAddCategoryOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+            onClick={() => setIsAddCategoryOpen(false)}
+          />
+
+          <div className="relative bg-[#fbf8f3] rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl border border-[#c99834]/40 z-10 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-4 border-b border-[#e8dece]">
+              <div className="flex items-center gap-2 text-[#781326] font-serif font-bold text-xl">
+                <Sparkles className="w-5 h-5 text-[#c99834]" />
+                <span>Add Boutique Collection</span>
+              </div>
+              <button
+                onClick={() => setIsAddCategoryOpen(false)}
+                className="p-1 rounded-full text-gray-500 hover:text-black"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCategory} className="mt-6 space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
+                  Collection / Category Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Eid Velvet Couture"
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
+                    URL Slug (auto-generated if empty)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. eid-velvet-couture"
+                    value={newCatSlug}
+                    onChange={(e) => setNewCatSlug(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] font-mono focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
+                    Display Order
+                  </label>
+                  <input
+                    type="number"
+                    value={newCatDisplayOrder}
+                    onChange={(e) => setNewCatDisplayOrder(Number(e.target.value))}
+                    className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
+                  Cover Photo Image URL *
+                </label>
+                <input
+                  type="url"
+                  required
+                  value={newCatImage}
+                  onChange={(e) => setNewCatImage(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                />
+                {newCatImage && (
+                  <div className="mt-2 w-24 h-28 rounded-xl overflow-hidden border border-[#e8dece]">
+                    <img src={newCatImage} alt="Cover preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
+                  Description
+                </label>
+                <textarea
+                  rows={3}
+                  value={newCatDescription}
+                  onChange={(e) => setNewCatDescription(e.target.value)}
+                  placeholder="e.g. Handcrafted micro-velvet kurtis, embroidered shawls, and regal festive sets."
+                  className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                />
+              </div>
+
+              <div className="pt-3">
+                <button
+                  type="submit"
+                  className="w-full py-4 rounded-xl bg-[#781326] text-[#f5e6a8] font-bold text-sm hover:bg-[#500a18] shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Create Collection</span>
                 </button>
               </div>
             </form>
