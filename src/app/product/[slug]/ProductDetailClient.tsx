@@ -408,7 +408,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
               <div className="text-xs">
                 <strong className="text-[#141215]">Fast Nationwide Delivery:</strong>
                 <p className="text-[#6e686c] mt-0.5">
-                  Inside Dhaka: 1–2 Days (৳80) • Outside Dhaka: 3–5 Days (৳150)
+                  Inside Dhaka: 1–2 Days (৳70) • Outside Dhaka: 2–4 Days (৳120)
                 </p>
               </div>
             </div>

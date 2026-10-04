@@ -15,17 +15,6 @@ import { BRAND_INFO } from '@/lib/products-data';
 export default function HeroBanner() {
   const slides = [
     {
-      title: 'Royal Dhakai Jamdani & Silk Sarees',
-      tagline: 'Festive & Heritage Collection 2026',
-      description:
-        'Indulge in time-honored Bangladeshi handloom artistry. Pure 84-count Dhakai Jamdani, Katan Silk, and hand-painted Muslin crafted for life’s grandest celebrations.',
-      image:
-        'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1600&q=85',
-      link: '/shop?category=sarees',
-      cta: 'Explore Sarees',
-      badge: 'Heritage Masterpieces',
-    },
-    {
       title: 'Premium Lawn 3-Pieces & Luxury Collections',
       tagline: 'Curated Exclusively by Farjana',
       description:
@@ -35,6 +24,17 @@ export default function HeroBanner() {
       link: '/shop?category=morja',
       cta: 'Shop Morja & 3-Pieces',
       badge: 'Boutique Exclusive',
+    },
+    {
+      title: 'Royal Dhakai Jamdani & Silk Sarees',
+      tagline: 'Festive & Heritage Collection 2026',
+      description:
+        'Indulge in time-honored Bangladeshi handloom artistry. Pure 84-count Dhakai Jamdani, Katan Silk, and hand-painted Muslin crafted for life’s grandest celebrations.',
+      image:
+        'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1600&q=85',
+      link: '/shop?category=sarees',
+      cta: 'Explore Sarees',
+      badge: 'Heritage Masterpieces',
     },
   ];
 

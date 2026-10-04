@@ -143,15 +143,37 @@ export default function CartPage() {
               Order Summary
             </h3>
 
-            <div className="space-y-2 text-xs">
+            <div className="space-y-3 text-xs">
               <div className="flex justify-between text-[#6e686c]">
                 <span>Items Subtotal:</span>
                 <span className="font-bold text-[#141215]">{formatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between text-[#6e686c]">
                 <span>Delivery Charge:</span>
-                <span className="text-[#0b4e39] font-medium">Inside Dhaka ৳80 / Outside ৳150</span>
+                {subtotal >= 3000 ? (
+                  <span className="text-[#0b4e39] font-bold bg-green-50 px-2 py-0.5 rounded-md border border-green-200">
+                    FREE (Orders over ৳3,000)
+                  </span>
+                ) : (
+                  <span className="text-[#0b4e39] font-medium">Inside Dhaka ৳70 / Outside ৳120</span>
+                )}
               </div>
+
+              {subtotal < 3000 ? (
+                <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 flex items-center justify-between">
+                  <span>
+                    Add <strong>{formatPrice(3000 - subtotal)}</strong> more for <strong>Free Delivery</strong>!
+                  </span>
+                  <Link href="/shop" className="text-[#781326] font-bold hover:underline">
+                    Shop More →
+                  </Link>
+                </div>
+              ) : (
+                <div className="p-2.5 bg-green-50 border border-green-200 rounded-xl text-[11px] text-[#0b4e39] font-medium flex items-center gap-1.5">
+                  <span>🎉 <strong>Free Delivery Qualified!</strong> No shipping fees will be charged.</span>
+                </div>
+              )}
+
               <div className="flex justify-between text-base font-serif font-extrabold text-[#781326] pt-3 border-t border-gray-200">
                 <span>Total Amount:</span>
                 <span className="text-xl text-[#c99834]">{formatPrice(subtotal)}</span>

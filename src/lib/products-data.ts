@@ -13,29 +13,25 @@ export const BRAND_INFO = {
   phone: '+880 1580-254707',
   email: 'contact@naqshbyfarjana.com',
   address: 'Banani & Dhanmondi Studio, Dhaka, Bangladesh',
-  bkashNumber: '01580254707 (Merchant / Send Money)',
-  nagadNumber: '01580254707 (Personal)',
+  bkashNumber: '01734936561 (Send Money)',
+  nagadNumber: '01734936561 (Send Money)',
   currency: '৳',
 };
+
+export const FREE_DELIVERY_THRESHOLD = 3000;
 
 export const DELIVERY_ZONES: DeliveryZoneOption[] = [
   {
     id: 'inside_dhaka',
-    name: 'Inside Dhaka City',
-    fee: 80,
+    name: 'Inside Dhaka',
+    fee: 70,
     estimated_days: '1-2 Days',
-  },
-  {
-    id: 'dhaka_suburbs',
-    name: 'Dhaka Suburbs (Gazipur, Savar, Narayanganj, Keraniganj)',
-    fee: 120,
-    estimated_days: '2-3 Days',
   },
   {
     id: 'outside_dhaka',
     name: 'Outside Dhaka (All Over Bangladesh)',
-    fee: 150,
-    estimated_days: '3-5 Days (SteadFast / Pathao / RedX)',
+    fee: 120,
+    estimated_days: '2-4 Days (SteadFast / Pathao / RedX)',
   },
 ];
 

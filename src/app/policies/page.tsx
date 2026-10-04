@@ -32,13 +32,10 @@ export default function PoliciesPage() {
             </p>
             <ul className="list-disc pl-5 space-y-1.5">
               <li>
-                <strong>Inside Dhaka City:</strong> ৳80 delivery charge (Delivery within 24 to 48 hours).
+                <strong>Inside Dhaka:</strong> ৳70 delivery charge (Delivery within 24 to 48 hours).
               </li>
               <li>
-                <strong>Dhaka Suburbs (Savar, Gazipur, Narayanganj, Keraniganj):</strong> ৳120 delivery charge (Delivery within 2 to 3 days).
-              </li>
-              <li>
-                <strong>Outside Dhaka (All Over Bangladesh):</strong> ৳150 delivery charge (Delivery within 3 to 5 business days).
+                <strong>Outside Dhaka (All Over Bangladesh):</strong> ৳120 delivery charge (Delivery within 2 to 4 business days).
               </li>
             </ul>
             <p className="text-[#0b4e39] font-semibold bg-green-50 p-3 rounded-xl">

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useCart } from '@/lib/cart-context';
-import { DELIVERY_ZONES, BRAND_INFO } from '@/lib/products-data';
+import { DELIVERY_ZONES, BRAND_INFO, FREE_DELIVERY_THRESHOLD } from '@/lib/products-data';
 import { formatPrice, generateOrderNumber } from '@/lib/utils';
 import { submitOrder } from '@/lib/api-helpers';
 import { PaymentMethod, DeliveryZoneOption } from '@/types';
@@ -58,7 +58,8 @@ export default function CheckoutPage() {
     );
   }
 
-  const deliveryFee = selectedZone.fee;
+  const isFreeDelivery = subtotal >= FREE_DELIVERY_THRESHOLD;
+  const deliveryFee = isFreeDelivery ? 0 : selectedZone.fee;
   const totalAmount = subtotal + deliveryFee;
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
@@ -298,7 +299,18 @@ export default function CheckoutPage() {
                           <p className="text-[11px] text-[#7d757a]">{zone.estimated_days}</p>
                         </div>
                       </div>
-                      <span className="text-xs font-bold text-[#781326]">৳{zone.fee}</span>
+                      <div className="flex items-center gap-1.5">
+                        {isFreeDelivery ? (
+                          <>
+                            <span className="text-xs text-gray-400 line-through">৳{zone.fee}</span>
+                            <span className="text-xs font-bold text-[#0b4e39] bg-green-50 px-2 py-0.5 rounded-md border border-green-200">
+                              FREE
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs font-bold text-[#781326]">৳{zone.fee}</span>
+                        )}
+                      </div>
                     </label>
                   ))}
                 </div>
@@ -545,7 +557,16 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex justify-between text-[#6e686c]">
                   <span>Delivery ({selectedZone.name}):</span>
-                  <span className="font-semibold text-[#141215]">{formatPrice(deliveryFee)}</span>
+                  {isFreeDelivery ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-gray-400 line-through">৳{selectedZone.fee}</span>
+                      <span className="font-bold text-[#0b4e39] bg-green-50 px-2 py-0.5 rounded-md border border-green-200 text-[11px]">
+                        FREE
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="font-semibold text-[#141215]">{formatPrice(deliveryFee)}</span>
+                  )}
                 </div>
                 <div className="flex justify-between text-base font-serif font-extrabold text-[#781326] pt-3 border-t border-gray-200">
                   <span>Grand Total:</span>

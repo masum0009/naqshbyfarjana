@@ -51,8 +51,8 @@ CREATE TABLE IF NOT EXISTS public.orders (
     customer_email VARCHAR(255),
     delivery_address TEXT NOT NULL,
     city VARCHAR(100) NOT NULL,
-    delivery_zone VARCHAR(50) NOT NULL, -- inside_dhaka, dhaka_suburbs, outside_dhaka
-    delivery_fee NUMERIC(10, 2) DEFAULT 80.00 NOT NULL,
+    delivery_zone VARCHAR(50) NOT NULL, -- inside_dhaka, outside_dhaka
+    delivery_fee NUMERIC(10, 2) DEFAULT 70.00 NOT NULL,
     payment_method VARCHAR(50) NOT NULL, -- cod, bkash, nagad
     payment_status VARCHAR(50) DEFAULT 'pending' NOT NULL, -- pending, verified, failed
     sender_number VARCHAR(50),
