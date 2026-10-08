@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import {
   ShoppingBag,
   MessageCircle,
@@ -16,6 +16,7 @@ import {
   Check,
   Maximize2,
   X,
+  Loader2,
 } from 'lucide-react';
 import { FacebookIcon } from '@/components/Icons';
 import { INITIAL_PRODUCTS, BRAND_INFO } from '@/lib/products-data';
@@ -27,15 +28,27 @@ import ProductCard from '@/components/ProductCard';
 
 export default function ProductDetailClient({ slug }: { slug: string }) {
   const router = useRouter();
+  const params = useParams();
   const { addToCart } = useCart();
 
+  // Resolve dynamic slug from props, useParams, or browser pathname
+  const effectiveSlug =
+    (params?.slug as string) ||
+    slug ||
+    (typeof window !== 'undefined' ? window.location.pathname.split('/').filter(Boolean).pop() : '') ||
+    '';
+
   const [productsList, setProductsList] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [isLoading, setIsLoading] = useState(true);
 
   React.useEffect(() => {
     let isMounted = true;
     fetchProducts().then((data) => {
-      if (isMounted && data && data.length > 0) {
-        setProductsList(data);
+      if (isMounted) {
+        if (data && data.length > 0) {
+          setProductsList(data);
+        }
+        setIsLoading(false);
       }
     });
     return () => {
@@ -44,8 +57,8 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
   }, []);
 
   const product =
-    productsList.find((p) => p.slug === slug) ||
-    INITIAL_PRODUCTS.find((p) => p.slug === slug);
+    productsList.find((p) => p.slug === effectiveSlug) ||
+    INITIAL_PRODUCTS.find((p) => p.slug === effectiveSlug);
 
   const productImages: string[] = React.useMemo(() => {
     if (!product?.images) return [];
@@ -67,6 +80,15 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
       setSelectedSize(product.sizes[0]);
     }
   }, [product?.id, product?.slug]);
+
+  if (isLoading && !product) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-32 text-center space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin text-[#781326] mx-auto" />
+        <p className="text-sm font-medium text-[#736a6e]">Loading outfit details...</p>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
