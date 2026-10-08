@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Lock,
@@ -23,6 +23,8 @@ import {
   Edit3,
   X,
   Check,
+  Tag,
+  ExternalLink,
   Search,
 } from 'lucide-react';
 import { BRAND_INFO, INITIAL_PRODUCTS, CATEGORIES } from '@/lib/products-data';
@@ -61,10 +63,32 @@ export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'categories'>('orders');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [productStatusFilter, setProductStatusFilter] = useState<'all' | 'published' | 'draft' | 'in_stock' | 'out_of_stock'>('all');
+  const [productTagFilter, setProductTagFilter] = useState<string>('all');
   const [orderSearchQuery, setOrderSearchQuery] = useState<string>('');
   const [productSearchQuery, setProductSearchQuery] = useState<string>('');
   const [categorySearchQuery, setCategorySearchQuery] = useState<string>('');
   const [loading, setLoading] = useState(false);
+
+  // Popular tag suggestions for 1-click tagging
+  const POPULAR_TAGS = [
+    'Eid Special',
+    'Luxury Lawn',
+    'Handloom',
+    'Pure Silk',
+    'Partywear',
+    'Bridal',
+    'Festive',
+    'Chikankari',
+    'Summer Edit',
+    'Bestseller',
+    'Organza',
+    '3-Piece',
+    'Jamdani',
+    'Zardozi',
+    'Morja',
+    'Gul Banu',
+    'Guljee',
+  ];
 
   // New product modal state
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
@@ -75,6 +99,7 @@ export default function AdminDashboardPage() {
   const [newFabric, setNewFabric] = useState('Pure Dhakai Cotton');
   const [newColor, setNewColor] = useState('Crimson & Gold');
   const [newSizes, setNewSizes] = useState('Free Size (6.5 Yards with Blouse Piece)');
+  const [newTags, setNewTags] = useState('Eid Special, Luxury Lawn');
   const [newImages, setNewImages] = useState<string[]>([
     'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=900&q=80',
   ]);
@@ -94,6 +119,7 @@ export default function AdminDashboardPage() {
   const [editFabric, setEditFabric] = useState('');
   const [editColor, setEditColor] = useState('');
   const [editSizes, setEditSizes] = useState('');
+  const [editTags, setEditTags] = useState('');
   const [editImages, setEditImages] = useState<string[]>([]);
   const [editImageUrlInput, setEditImageUrlInput] = useState('');
   const [editSku, setEditSku] = useState('');
@@ -275,6 +301,7 @@ export default function AdminDashboardPage() {
       fabric: newFabric.trim(),
       color: newColor.trim(),
       sizes: newSizes.split(',').map((s) => s.trim()).filter(Boolean),
+      tags: newTags.split(',').map((s) => s.trim()).filter(Boolean),
       images: finalImages,
       in_stock: newInStock && Number(newStock) > 0,
       stock_count: Number(newStock),
@@ -294,6 +321,7 @@ export default function AdminDashboardPage() {
     setNewTitle('');
     setNewSku('');
     setNewImageUrlInput('');
+    setNewTags('Eid Special, Luxury Lawn');
     setNewInStock(true);
     setNewStock(10);
     setNewIsPublished(true);
@@ -329,6 +357,7 @@ export default function AdminDashboardPage() {
     setEditFabric(prod.fabric || '');
     setEditColor(prod.color || '');
     setEditSizes(prod.sizes ? prod.sizes.join(', ') : 'Free Size');
+    setEditTags(prod.tags && prod.tags.length > 0 ? prod.tags.join(', ') : '');
     setEditImages(Array.isArray(prod.images) ? [...prod.images] : [prod.images].filter(Boolean));
     setEditImageUrlInput('');
     setEditSku(prod.sku);
@@ -368,6 +397,7 @@ export default function AdminDashboardPage() {
       fabric: editFabric.trim(),
       color: editColor.trim(),
       sizes: editSizes.split(',').map((s) => s.trim()).filter(Boolean),
+      tags: editTags.split(',').map((s) => s.trim()).filter(Boolean),
       images: finalImages,
       sku: editSku.trim() || editingProduct.sku || generateSku(editCategory, editTitle),
       in_stock: editInStock && Number(editStock) > 0,
@@ -426,6 +456,14 @@ export default function AdminDashboardPage() {
     await updateProduct(updated);
   };
 
+  const adminUniqueTags = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => {
+      p.tags?.forEach((t) => set.add(t));
+    });
+    return Array.from(set);
+  }, [products]);
+
   const filteredOrders = orders.filter((o) => {
     if (statusFilter !== 'all' && o.order_status !== statusFilter) return false;
     if (orderSearchQuery.trim()) {
@@ -445,13 +483,20 @@ export default function AdminDashboardPage() {
     if (productStatusFilter === 'in_stock' && (!p.in_stock || (p.stock_count !== undefined && p.stock_count <= 0))) return false;
     if (productStatusFilter === 'out_of_stock' && p.in_stock && (p.stock_count === undefined || p.stock_count > 0)) return false;
 
+    if (productTagFilter !== 'all') {
+      if (!p.tags || !p.tags.some((t) => t.toLowerCase() === productTagFilter.toLowerCase())) {
+        return false;
+      }
+    }
+
     if (productSearchQuery.trim()) {
       const q = productSearchQuery.toLowerCase();
       return (
         p.title.toLowerCase().includes(q) ||
         p.sku.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q) ||
-        p.fabric?.toLowerCase().includes(q)
+        p.fabric?.toLowerCase().includes(q) ||
+        p.tags?.some((t) => t.toLowerCase().includes(q))
       );
     }
     return true;
@@ -885,11 +930,46 @@ export default function AdminDashboardPage() {
               </button>
             </div>
 
+            {/* Tag Filter Pills */}
+            {adminUniqueTags.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-gray-100">
+                <span className="text-[11px] font-bold text-[#8e858a] flex items-center gap-1 mr-1">
+                  <Tag className="w-3 h-3 text-[#c99834]" /> Filter by Tag:
+                </span>
+                <button
+                  onClick={() => setProductTagFilter('all')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                    productTagFilter === 'all'
+                      ? 'bg-[#781326] text-[#f5e6a8] shadow-xs'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  All Tags
+                </button>
+                {adminUniqueTags.map((tag) => {
+                  const count = products.filter((p) => p.tags?.some((t) => t.toLowerCase() === tag.toLowerCase())).length;
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => setProductTagFilter(productTagFilter === tag ? 'all' : tag)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                        productTagFilter === tag
+                          ? 'bg-[#781326] text-[#f5e6a8] shadow-xs'
+                          : 'bg-[#faf7f2] text-[#554e53] border border-[#e8dece] hover:border-[#781326]'
+                      }`}
+                    >
+                      #{tag} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             <div className="flex items-center gap-3">
               <div className="relative min-w-[220px]">
                 <input
                   type="text"
-                  placeholder="Search outfits, SKU, fabric..."
+                  placeholder="Search outfits, SKU, tag, fabric..."
                   value={productSearchQuery}
                   onChange={(e) => setProductSearchQuery(e.target.value)}
                   className="w-full px-3 py-2 pl-9 text-xs rounded-xl border border-[#e8dece] bg-[#fbf8f3] focus:outline-none focus:ring-1 focus:ring-[#781326]"
@@ -943,6 +1023,20 @@ export default function AdminDashboardPage() {
                         {prod.title}
                       </h3>
                       <p className="text-[11px] text-[#8e858a] mt-0.5">{prod.category}</p>
+
+                      {prod.tags && prod.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {prod.tags.map((t) => (
+                            <span
+                              key={t}
+                              className="px-1.5 py-0.5 rounded-md bg-[#fceddf] text-[#781326] text-[9px] font-bold"
+                            >
+                              #{t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
                       <p className="text-[#781326] font-bold text-sm mt-1">
                         {formatPrice(prod.price)}
                       </p>
@@ -1334,6 +1428,53 @@ export default function AdminDashboardPage() {
                 />
               </div>
 
+              {/* Tags Input with 1-Click Suggestions */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block font-bold text-[#3d383b] uppercase tracking-wider text-xs flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5 text-[#c99834]" />
+                    <span>Product Tags & Badges</span>
+                  </label>
+                  <span className="text-[10px] text-[#8e858a]">Click suggestions or type custom tags</span>
+                </div>
+                <input
+                  type="text"
+                  value={editTags}
+                  onChange={(e) => setEditTags(e.target.value)}
+                  placeholder="e.g. Eid Special, Luxury Lawn, Silk, Partywear"
+                  className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {POPULAR_TAGS.map((tag) => {
+                    const isSelected = editTags
+                      .split(',')
+                      .map((t) => t.trim().toLowerCase())
+                      .includes(tag.toLowerCase());
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => {
+                          const list = editTags.split(',').map((t) => t.trim()).filter(Boolean);
+                          if (isSelected) {
+                            setEditTags(list.filter((t) => t.toLowerCase() !== tag.toLowerCase()).join(', '));
+                          } else {
+                            setEditTags([...list, tag].join(', '));
+                          }
+                        }}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#781326] text-[#f5e6a8] shadow-xs'
+                            : 'bg-[#faf7f2] text-[#554e53] border border-[#e8dece] hover:border-[#781326]'
+                        }`}
+                      >
+                        {isSelected ? '✓ ' : '+ '} {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="space-y-2 p-4 rounded-2xl bg-white border border-[#e8dece]">
                 <div className="flex items-center justify-between">
                   <label className="block font-bold text-[#3d383b] uppercase tracking-wider text-[11px]">
@@ -1662,6 +1803,53 @@ export default function AdminDashboardPage() {
                   placeholder="e.g. S (Bust 36), M (Bust 38), L (Bust 40), XL (Bust 42)"
                   className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
                 />
+              </div>
+
+              {/* Tags Input with 1-Click Suggestions */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block font-bold text-[#3d383b] uppercase tracking-wider text-xs flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5 text-[#c99834]" />
+                    <span>Product Tags & Badges</span>
+                  </label>
+                  <span className="text-[10px] text-[#8e858a]">Click suggestions or type custom tags</span>
+                </div>
+                <input
+                  type="text"
+                  value={newTags}
+                  onChange={(e) => setNewTags(e.target.value)}
+                  placeholder="e.g. Eid Special, Luxury Lawn, Silk, Partywear"
+                  className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {POPULAR_TAGS.map((tag) => {
+                    const isSelected = newTags
+                      .split(',')
+                      .map((t) => t.trim().toLowerCase())
+                      .includes(tag.toLowerCase());
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => {
+                          const list = newTags.split(',').map((t) => t.trim()).filter(Boolean);
+                          if (isSelected) {
+                            setNewTags(list.filter((t) => t.toLowerCase() !== tag.toLowerCase()).join(', '));
+                          } else {
+                            setNewTags([...list, tag].join(', '));
+                          }
+                        }}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#781326] text-[#f5e6a8] shadow-xs'
+                            : 'bg-[#faf7f2] text-[#554e53] border border-[#e8dece] hover:border-[#781326]'
+                        }`}
+                      >
+                        {isSelected ? '✓ ' : '+ '} {tag}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Multi-Image upload / manager */}

@@ -156,6 +156,24 @@ export default function ProductCard({ product }: ProductCardProps) {
             <p className="text-xs text-[#6e686c] mt-1 line-clamp-1">
               {product.fabric}
             </p>
+
+            {product.tags && product.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {product.tags.slice(0, 2).map((tag, idx) => (
+                  <span
+                    key={idx}
+                    className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-[#f4eee2] text-[#781326] border border-[#e8dece]"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+                {product.tags.length > 2 && (
+                  <span className="text-[10px] text-gray-400 self-center">
+                    +{product.tags.length - 2}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Pricing & Order Info */}

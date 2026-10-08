@@ -18,6 +18,7 @@ export interface Product {
   is_bestseller?: boolean;
   is_new_arrival?: boolean;
   sku: string;
+  tags?: string[];
   details?: string[];
   care_instructions?: string[];
   created_at?: string;

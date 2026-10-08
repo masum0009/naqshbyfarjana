@@ -175,6 +175,28 @@ export async function deleteCategory(categoryId: string): Promise<{ success: boo
 }
 
 function mapSupabaseProduct(p: any): Product {
+  const rawDetails: string[] = Array.isArray(p.details)
+    ? p.details
+    : typeof p.details === 'string'
+    ? JSON.parse(p.details || '[]')
+    : [];
+
+  const extractedTagsFromDetails = rawDetails
+    .filter((d) => typeof d === 'string' && d.startsWith('tag:'))
+    .map((d) => d.replace(/^tag:\s*/, '').trim())
+    .filter(Boolean);
+
+  const cleanDetails = rawDetails.filter(
+    (d) => typeof d === 'string' && !d.startsWith('tag:')
+  );
+
+  let finalTags: string[] = [];
+  if (Array.isArray(p.tags) && p.tags.length > 0) {
+    finalTags = p.tags;
+  } else if (extractedTagsFromDetails.length > 0) {
+    finalTags = extractedTagsFromDetails;
+  }
+
   return {
     id: p.id,
     title: p.title || '',
@@ -206,11 +228,8 @@ function mapSupabaseProduct(p: any): Product {
     is_bestseller: Boolean(p.is_bestseller),
     is_new_arrival: Boolean(p.is_new_arrival),
     sku: p.sku || `NQ-${Math.floor(1000 + Math.random() * 9000)}`,
-    details: Array.isArray(p.details)
-      ? p.details
-      : typeof p.details === 'string'
-      ? JSON.parse(p.details || '[]')
-      : [],
+    tags: finalTags,
+    details: cleanDetails,
     care_instructions: Array.isArray(p.care_instructions)
       ? p.care_instructions
       : typeof p.care_instructions === 'string'
@@ -332,6 +351,18 @@ export async function saveProduct(productPayload: Partial<Product>): Promise<{ s
       ? productPayload.images
       : ['https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=900&q=80'];
 
+  const rawDetails = productPayload.details || [];
+  const tags = Array.isArray(productPayload.tags)
+    ? productPayload.tags.map((t) => t.trim()).filter(Boolean)
+    : typeof productPayload.tags === 'string'
+    ? (productPayload.tags as string).split(',').map((t) => t.trim()).filter(Boolean)
+    : [];
+
+  const combinedDetails = [
+    ...rawDetails.filter((d) => !d.startsWith('tag:')),
+    ...tags.map((t) => `tag:${t}`),
+  ];
+
   const dbProductPayload = {
     title: productPayload.title?.trim() || 'Untitled Outfit',
     slug: baseSlug,
@@ -350,7 +381,7 @@ export async function saveProduct(productPayload: Partial<Product>): Promise<{ s
     is_bestseller: Boolean(productPayload.is_bestseller),
     is_new_arrival: Boolean(productPayload.is_new_arrival),
     sku: finalSku,
-    details: productPayload.details || [],
+    details: combinedDetails,
     care_instructions: productPayload.care_instructions || [],
   };
 
@@ -378,6 +409,7 @@ export async function saveProduct(productPayload: Partial<Product>): Promise<{ s
       if (!error && data) {
         const full = mapSupabaseProduct(data);
         full.is_published = productPayload.is_published !== undefined ? Boolean(productPayload.is_published) : true;
+        full.tags = tags;
         updateLocalProductsCache(full, 'add');
         return { success: true, data: full };
       } else if (error) {
@@ -394,6 +426,8 @@ export async function saveProduct(productPayload: Partial<Product>): Promise<{ s
     id: `prod-${Date.now()}`,
     original_price: productPayload.original_price ? Number(productPayload.original_price) : undefined,
     category: matchedCategory?.name || 'Heritage Sarees',
+    tags: tags,
+    details: rawDetails.filter((d) => !d.startsWith('tag:')),
     is_published: productPayload.is_published !== undefined ? Boolean(productPayload.is_published) : true,
   };
   updateLocalProductsCache(localProd, 'add');
@@ -408,6 +442,18 @@ export async function updateProduct(product: Product): Promise<{ success: boolea
 
   const isUUID = (str?: string) => Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str));
   const categoryId = matchedCategory && isUUID(matchedCategory.id) ? matchedCategory.id : null;
+
+  const rawDetails = product.details || [];
+  const tags = Array.isArray(product.tags)
+    ? product.tags.map((t) => t.trim()).filter(Boolean)
+    : typeof product.tags === 'string'
+    ? (product.tags as string).split(',').map((t) => t.trim()).filter(Boolean)
+    : [];
+
+  const combinedDetails = [
+    ...rawDetails.filter((d) => !d.startsWith('tag:')),
+    ...tags.map((t) => `tag:${t}`),
+  ];
 
   const dbUpdatePayload = {
     title: product.title,
@@ -427,7 +473,7 @@ export async function updateProduct(product: Product): Promise<{ success: boolea
     is_bestseller: product.is_bestseller,
     is_new_arrival: product.is_new_arrival,
     sku: product.sku?.trim() || generateSku(product.category_slug, product.title),
-    details: product.details,
+    details: combinedDetails,
     care_instructions: product.care_instructions,
   };
 
@@ -447,6 +493,7 @@ export async function updateProduct(product: Product): Promise<{ success: boolea
       if (!error && data) {
         const full = mapSupabaseProduct(data);
         full.is_published = product.is_published !== undefined ? Boolean(product.is_published) : true;
+        full.tags = tags;
         updateLocalProductsCache(full, 'update');
         return { success: true, data: full };
       } else if (error) {
@@ -457,8 +504,13 @@ export async function updateProduct(product: Product): Promise<{ success: boolea
     }
   }
 
-  updateLocalProductsCache(product, 'update');
-  return { success: true, data: product };
+  const updatedLocal = {
+    ...product,
+    tags: tags,
+    details: rawDetails.filter((d) => !d.startsWith('tag:')),
+  };
+  updateLocalProductsCache(updatedLocal, 'update');
+  return { success: true, data: updatedLocal };
 }
 
 export async function deleteProduct(productId: string): Promise<{ success: boolean }> {

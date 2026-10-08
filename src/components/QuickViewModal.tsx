@@ -120,6 +120,19 @@ export default function QuickViewModal({ product, onClose }: QuickViewModalProps
                 {product.title}
               </h2>
 
+              {product.tags && product.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {product.tags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-[#f4eee2] text-[#781326] border border-[#e8dece]"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {/* Price */}
               <div className="flex items-baseline gap-3 mt-3">
                 <span className="font-serif text-2xl font-extrabold text-[#781326]">

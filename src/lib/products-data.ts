@@ -135,6 +135,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     is_bestseller: true,
     is_new_arrival: true,
     sku: 'NQ-SR-0101',
+    tags: ['Handloom', 'Jamdani', 'Eid Special', 'Festive'],
     details: [
       'Authentic Bangladeshi Handloom Craft',
       'Includes unstitched matching running blouse piece (80cm)',
@@ -170,6 +171,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     is_bestseller: true,
     is_new_arrival: true,
     sku: 'NQ-MR-0201',
+    tags: ['Luxury Lawn', 'Eid Special', '3-Piece', 'Morja'],
     details: [
       'Signature Morja collection luxury 3-piece',
       'Heavy embroidered front yolk & sleeve organza patches',
@@ -204,6 +206,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     is_bestseller: true,
     is_new_arrival: true,
     sku: 'NQ-GB-0301',
+    tags: ['Gul Banu', 'Cotton Silk', 'Partywear', 'Festive'],
     details: [
       'Signature Gul Banu luxury festive design',
       'Intricate needlework with floral resham threads',
@@ -237,6 +240,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     is_featured: true,
     is_bestseller: true,
     sku: 'NQ-NJ-0401',
+    tags: ['Raw Silk', 'Zardozi', 'Bridal', 'Royal'],
     details: [
       'Complete 3-Piece Ready-to-wear set',
       'Fine micro-thread embroidery and stone highlights',
@@ -270,6 +274,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     is_featured: false,
     is_new_arrival: true,
     sku: 'NQ-MR-0202',
+    tags: ['Chikankari', 'Pastel', 'Summer Lawn', 'Morja'],
     details: [
       'Morja premium lawn with fine chikankari motifs',
       'Pre-shrunk colorfast fabric',
@@ -298,6 +303,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     stock_count: 5,
     is_featured: true,
     sku: 'NQ-SR-0108',
+    tags: ['Pure Silk', 'Banarasi', 'Bridal', 'Heritage'],
     details: [
       'Silk Mark Certified Authenticity',
       'Rich contrast brocade blouse piece included',
@@ -327,6 +333,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     is_featured: false,
     is_bestseller: true,
     sku: 'NQ-MR-0203',
+    tags: ['Digital Lawn', 'Partywear', 'Morja', 'Royal Blue'],
     details: [
       'Morja luxury festive collection',
       'Digital printed lawn shirt with resham threadwork patch',
@@ -357,6 +364,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     is_featured: true,
     is_new_arrival: true,
     sku: 'NQ-GB-0302',
+    tags: ['Organza', 'Dabka Work', 'Gul Banu', 'Festive'],
     details: [
       'Gul Banu festive boutique edition',
       'Includes matching bottom and embroidered dupatta',

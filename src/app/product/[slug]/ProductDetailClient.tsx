@@ -17,6 +17,7 @@ import {
   Maximize2,
   X,
   Loader2,
+  Tag,
 } from 'lucide-react';
 import { FacebookIcon } from '@/components/Icons';
 import { INITIAL_PRODUCTS, BRAND_INFO } from '@/lib/products-data';
@@ -319,6 +320,23 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
             <h1 className="font-serif text-3xl sm:text-4xl font-extrabold text-[#141215] leading-snug">
               {product.title}
             </h1>
+
+            {product.tags && product.tags.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                <span className="text-[11px] font-semibold text-[#8e858a] flex items-center gap-1">
+                  <Tag className="w-3 h-3 text-[#c99834]" /> Tags:
+                </span>
+                {product.tags.map((tag, idx) => (
+                  <Link
+                    key={idx}
+                    href={`/shop?tag=${encodeURIComponent(tag)}`}
+                    className="text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-[#f4eee2] text-[#781326] border border-[#e8dece] hover:bg-[#781326] hover:text-[#f5e6a8] transition-colors"
+                  >
+                    #{tag}
+                  </Link>
+                ))}
+              </div>
+            )}
 
             {/* Price Box */}
             <div className="flex items-baseline gap-4 mt-4 p-4 rounded-2xl bg-white border border-[#e8dece] shadow-xs">
