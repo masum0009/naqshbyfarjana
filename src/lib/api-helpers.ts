@@ -283,11 +283,23 @@ export async function saveProduct(productPayload: Partial<Product>): Promise<{ s
 
   if (isSupabaseConfigured && supabase) {
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('products')
         .insert([cleanProduct])
         .select()
         .single();
+
+      // If the is_published column does not exist yet on Supabase, retry without it
+      if (error && error.message && error.message.includes('is_published')) {
+        const { is_published, ...productWithoutPublished } = cleanProduct;
+        const retry = await supabase
+          .from('products')
+          .insert([productWithoutPublished])
+          .select()
+          .single();
+        data = retry.data;
+        error = retry.error;
+      }
 
       if (!error && data) {
         const full = mapSupabaseProduct(data);
@@ -336,12 +348,25 @@ export async function updateProduct(product: Product): Promise<{ success: boolea
 
   if (isSupabaseConfigured && supabase) {
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('products')
         .update(cleanPayload)
         .eq('id', product.id)
         .select()
         .single();
+
+      // If the is_published column does not exist yet on Supabase, retry without it
+      if (error && error.message && error.message.includes('is_published')) {
+        const { is_published, ...payloadWithoutPublished } = cleanPayload;
+        const retry = await supabase
+          .from('products')
+          .update(payloadWithoutPublished)
+          .eq('id', product.id)
+          .select()
+          .single();
+        data = retry.data;
+        error = retry.error;
+      }
 
       if (!error && data) {
         const full = mapSupabaseProduct(data);
