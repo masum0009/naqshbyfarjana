@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS public.products (
     images TEXT[] NOT NULL,
     in_stock BOOLEAN DEFAULT true NOT NULL,
     stock_count INT DEFAULT 10 NOT NULL,
+    is_published BOOLEAN DEFAULT true NOT NULL,
     is_featured BOOLEAN DEFAULT false NOT NULL,
     is_bestseller BOOLEAN DEFAULT false NOT NULL,
     is_new_arrival BOOLEAN DEFAULT false NOT NULL,
