@@ -186,8 +186,22 @@ function mapSupabaseProduct(p: any): Product {
     .map((d) => d.replace(/^tag:\s*/, '').trim())
     .filter(Boolean);
 
+  let isPublished = true;
+  if (p.is_published !== undefined && p.is_published !== null) {
+    isPublished = Boolean(p.is_published);
+  } else if (rawDetails.some((d) => d === 'status:draft' || d === 'is_published:false' || d === 'draft:true')) {
+    isPublished = false;
+  } else if (rawDetails.some((d) => d === 'status:published' || d === 'is_published:true')) {
+    isPublished = true;
+  }
+
   const cleanDetails = rawDetails.filter(
-    (d) => typeof d === 'string' && !d.startsWith('tag:')
+    (d) =>
+      typeof d === 'string' &&
+      !d.startsWith('tag:') &&
+      !d.startsWith('status:') &&
+      !d.startsWith('is_published:') &&
+      !d.startsWith('draft:')
   );
 
   let finalTags: string[] = [];
@@ -223,7 +237,7 @@ function mapSupabaseProduct(p: any): Product {
       : ['https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=900&q=80'],
     in_stock: p.in_stock !== undefined ? Boolean(p.in_stock) : true,
     stock_count: p.stock_count !== undefined ? Number(p.stock_count) : 10,
-    is_published: p.is_published !== undefined ? Boolean(p.is_published) : true,
+    is_published: isPublished,
     is_featured: Boolean(p.is_featured),
     is_bestseller: Boolean(p.is_bestseller),
     is_new_arrival: Boolean(p.is_new_arrival),
@@ -358,8 +372,19 @@ export async function saveProduct(productPayload: Partial<Product>): Promise<{ s
     ? (productPayload.tags as string).split(',').map((t) => t.trim()).filter(Boolean)
     : [];
 
+  const isPublished = productPayload.is_published !== false;
+  const statusFlag = isPublished ? 'status:published' : 'status:draft';
+
   const combinedDetails = [
-    ...rawDetails.filter((d) => !d.startsWith('tag:')),
+    ...rawDetails.filter(
+      (d) =>
+        typeof d === 'string' &&
+        !d.startsWith('tag:') &&
+        !d.startsWith('status:') &&
+        !d.startsWith('is_published:') &&
+        !d.startsWith('draft:')
+    ),
+    statusFlag,
     ...tags.map((t) => `tag:${t}`),
   ];
 
@@ -408,7 +433,7 @@ export async function saveProduct(productPayload: Partial<Product>): Promise<{ s
 
       if (!error && data) {
         const full = mapSupabaseProduct(data);
-        full.is_published = productPayload.is_published !== undefined ? Boolean(productPayload.is_published) : true;
+        full.is_published = isPublished;
         full.tags = tags;
         updateLocalProductsCache(full, 'add');
         return { success: true, data: full };
@@ -427,8 +452,15 @@ export async function saveProduct(productPayload: Partial<Product>): Promise<{ s
     original_price: productPayload.original_price ? Number(productPayload.original_price) : undefined,
     category: matchedCategory?.name || 'Heritage Sarees',
     tags: tags,
-    details: rawDetails.filter((d) => !d.startsWith('tag:')),
-    is_published: productPayload.is_published !== undefined ? Boolean(productPayload.is_published) : true,
+    details: rawDetails.filter(
+      (d) =>
+        typeof d === 'string' &&
+        !d.startsWith('tag:') &&
+        !d.startsWith('status:') &&
+        !d.startsWith('is_published:') &&
+        !d.startsWith('draft:')
+    ),
+    is_published: isPublished,
   };
   updateLocalProductsCache(localProd, 'add');
   return { success: true, data: localProd };
@@ -450,8 +482,19 @@ export async function updateProduct(product: Product): Promise<{ success: boolea
     ? (product.tags as string).split(',').map((t) => t.trim()).filter(Boolean)
     : [];
 
+  const isPublished = product.is_published !== false;
+  const statusFlag = isPublished ? 'status:published' : 'status:draft';
+
   const combinedDetails = [
-    ...rawDetails.filter((d) => !d.startsWith('tag:')),
+    ...rawDetails.filter(
+      (d) =>
+        typeof d === 'string' &&
+        !d.startsWith('tag:') &&
+        !d.startsWith('status:') &&
+        !d.startsWith('is_published:') &&
+        !d.startsWith('draft:')
+    ),
+    statusFlag,
     ...tags.map((t) => `tag:${t}`),
   ];
 
@@ -492,7 +535,7 @@ export async function updateProduct(product: Product): Promise<{ success: boolea
 
       if (!error && data) {
         const full = mapSupabaseProduct(data);
-        full.is_published = product.is_published !== undefined ? Boolean(product.is_published) : true;
+        full.is_published = isPublished;
         full.tags = tags;
         updateLocalProductsCache(full, 'update');
         return { success: true, data: full };
@@ -506,8 +549,16 @@ export async function updateProduct(product: Product): Promise<{ success: boolea
 
   const updatedLocal = {
     ...product,
+    is_published: isPublished,
     tags: tags,
-    details: rawDetails.filter((d) => !d.startsWith('tag:')),
+    details: rawDetails.filter(
+      (d) =>
+        typeof d === 'string' &&
+        !d.startsWith('tag:') &&
+        !d.startsWith('status:') &&
+        !d.startsWith('is_published:') &&
+        !d.startsWith('draft:')
+    ),
   };
   updateLocalProductsCache(updatedLocal, 'update');
   return { success: true, data: updatedLocal };

@@ -441,7 +441,12 @@ export default function AdminDashboardPage() {
     setProducts((prev) =>
       prev.map((p) => (p.id === productId ? updated : p))
     );
-    await updateProduct(updated);
+    const res = await updateProduct(updated);
+    if (res.data) {
+      setProducts((prev) =>
+        prev.map((p) => (p.id === productId || p.slug === res.data!.slug ? res.data! : p))
+      );
+    }
   };
 
   const handleTogglePublish = async (productId: string) => {
@@ -453,7 +458,12 @@ export default function AdminDashboardPage() {
     setProducts((prev) =>
       prev.map((p) => (p.id === productId ? updated : p))
     );
-    await updateProduct(updated);
+    const res = await updateProduct(updated);
+    if (res.data) {
+      setProducts((prev) =>
+        prev.map((p) => (p.id === productId || p.slug === res.data!.slug ? res.data! : p))
+      );
+    }
   };
 
   const adminUniqueTags = useMemo(() => {
