@@ -86,6 +86,11 @@ function ShopContent() {
   // Filtered and sorted products
   const filteredProducts = useMemo(() => {
     return productsList.filter((product) => {
+      // Exclude unpublished / draft products from shop
+      if (product.is_published === false) {
+        return false;
+      }
+
       // Category filter
       if (selectedCategory !== 'all' && product.category_slug !== selectedCategory) {
         return false;

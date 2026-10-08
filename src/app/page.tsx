@@ -36,8 +36,9 @@ export default function HomePage() {
     };
   }, []);
 
-  const bestSellers = products.filter((p) => p.is_bestseller).slice(0, 4);
-  const newArrivals = products.filter((p) => p.is_new_arrival).slice(0, 4);
+  const publishedProducts = products.filter((p) => p.is_published !== false);
+  const bestSellers = publishedProducts.filter((p) => p.is_bestseller).slice(0, 4);
+  const newArrivals = publishedProducts.filter((p) => p.is_new_arrival).slice(0, 4);
 
   const testimonials = [
     {

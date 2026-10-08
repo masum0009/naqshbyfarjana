@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Truck,
   Eye,
+  EyeOff,
   Filter,
   RefreshCw,
   LogOut,
@@ -25,7 +26,7 @@ import {
   Search,
 } from 'lucide-react';
 import { BRAND_INFO, INITIAL_PRODUCTS, CATEGORIES } from '@/lib/products-data';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, generateSku } from '@/lib/utils';
 import {
   fetchProducts,
   fetchOrders,
@@ -48,6 +49,7 @@ export default function AdminDashboardPage() {
   const [categories, setCategories] = useState<Category[]>(CATEGORIES);
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'categories'>('orders');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [productStatusFilter, setProductStatusFilter] = useState<'all' | 'published' | 'draft' | 'in_stock' | 'out_of_stock'>('all');
   const [orderSearchQuery, setOrderSearchQuery] = useState<string>('');
   const [productSearchQuery, setProductSearchQuery] = useState<string>('');
   const [categorySearchQuery, setCategorySearchQuery] = useState<string>('');
@@ -66,8 +68,10 @@ export default function AdminDashboardPage() {
     'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=900&q=80',
   ]);
   const [newImageUrlInput, setNewImageUrlInput] = useState('');
-  const [newSku, setNewSku] = useState(`NQ-SR-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [newSku, setNewSku] = useState('');
+  const [newInStock, setNewInStock] = useState<boolean>(true);
   const [newStock, setNewStock] = useState<number>(10);
+  const [newIsPublished, setNewIsPublished] = useState<boolean>(true);
   const [newDescription, setNewDescription] = useState('');
 
   // Edit product modal state
@@ -82,7 +86,9 @@ export default function AdminDashboardPage() {
   const [editImages, setEditImages] = useState<string[]>([]);
   const [editImageUrlInput, setEditImageUrlInput] = useState('');
   const [editSku, setEditSku] = useState('');
+  const [editInStock, setEditInStock] = useState<boolean>(true);
   const [editStock, setEditStock] = useState<number>(10);
+  const [editIsPublished, setEditIsPublished] = useState<boolean>(true);
   const [editDescription, setEditDescription] = useState('');
 
   // Category modal states
@@ -117,11 +123,17 @@ export default function AdminDashboardPage() {
     }
   };
 
+  useEffect(() => {
+    loadCategories();
+    loadProducts();
+  }, []);
+
   const loadCategories = async () => {
     try {
       const data = await fetchCategories();
       if (data && data.length > 0) {
         setCategories(data);
+        setNewCategory((prev) => (data.some((c) => c.slug === prev) ? prev : data[0].slug));
       }
     } catch (e) {
       console.error(e);
@@ -227,7 +239,7 @@ export default function AdminDashboardPage() {
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const selectedCategoryObj = CATEGORIES.find((c) => c.slug === newCategory);
+    const selectedCategoryObj = categories.find((c) => c.slug === newCategory) || CATEGORIES.find((c) => c.slug === newCategory);
 
     // Combine any typed input in input box with existing images list
     const extraUrls = newImageUrlInput
@@ -253,11 +265,12 @@ export default function AdminDashboardPage() {
       color: newColor.trim(),
       sizes: newSizes.split(',').map((s) => s.trim()).filter(Boolean),
       images: finalImages,
-      in_stock: true,
+      in_stock: newInStock && Number(newStock) > 0,
       stock_count: Number(newStock),
+      is_published: newIsPublished,
       is_featured: true,
       is_new_arrival: true,
-      sku: newSku.trim(),
+      sku: newSku.trim() || generateSku(newCategory, newTitle),
     };
 
     const res = await saveProduct(productPayload);
@@ -269,14 +282,17 @@ export default function AdminDashboardPage() {
 
     setIsAddProductOpen(false);
     setNewTitle('');
-    setNewSku(`NQ-SR-${Math.floor(1000 + Math.random() * 9000)}`);
+    setNewSku('');
     setNewImageUrlInput('');
+    setNewInStock(true);
+    setNewStock(10);
+    setNewIsPublished(true);
   };
 
   const handleOpenEditModal = (prod: Product) => {
     setEditingProduct(prod);
     setEditTitle(prod.title);
-    setEditCategory(prod.category_slug);
+    setEditCategory(prod.category_slug || (categories.find((c) => c.name === prod.category)?.slug) || 'sarees');
     setEditPrice(prod.price);
     setEditOriginalPrice(prod.original_price);
     setEditFabric(prod.fabric || '');
@@ -285,7 +301,9 @@ export default function AdminDashboardPage() {
     setEditImages(Array.isArray(prod.images) ? [...prod.images] : [prod.images].filter(Boolean));
     setEditImageUrlInput('');
     setEditSku(prod.sku);
-    setEditStock(prod.stock_count || 10);
+    setEditInStock(prod.in_stock !== false && (prod.stock_count === undefined || prod.stock_count > 0));
+    setEditStock(prod.stock_count !== undefined ? prod.stock_count : 10);
+    setEditIsPublished(prod.is_published !== false);
     setEditDescription(prod.description || '');
   };
 
@@ -293,7 +311,7 @@ export default function AdminDashboardPage() {
     e.preventDefault();
     if (!editingProduct) return;
 
-    const selectedCategoryObj = CATEGORIES.find((c) => c.slug === editCategory);
+    const selectedCategoryObj = categories.find((c) => c.slug === editCategory) || CATEGORIES.find((c) => c.slug === editCategory);
 
     const extraUrls = editImageUrlInput
       .split(/[\n,]+/)
@@ -320,8 +338,10 @@ export default function AdminDashboardPage() {
       color: editColor.trim(),
       sizes: editSizes.split(',').map((s) => s.trim()).filter(Boolean),
       images: finalImages,
-      sku: editSku.trim(),
+      sku: editSku.trim() || editingProduct.sku || generateSku(editCategory, editTitle),
+      in_stock: editInStock && Number(editStock) > 0,
       stock_count: Number(editStock),
+      is_published: editIsPublished,
     };
 
     setProducts((prev) =>
@@ -347,7 +367,24 @@ export default function AdminDashboardPage() {
     const target = products.find((p) => p.id === productId);
     if (!target) return;
 
-    const updated = { ...target, in_stock: !target.in_stock };
+    const nextStock = !target.in_stock;
+    const updated: Product = {
+      ...target,
+      in_stock: nextStock,
+      stock_count: nextStock ? (target.stock_count > 0 ? target.stock_count : 10) : 0,
+    };
+    setProducts((prev) =>
+      prev.map((p) => (p.id === productId ? updated : p))
+    );
+    await updateProduct(updated);
+  };
+
+  const handleTogglePublish = async (productId: string) => {
+    const target = products.find((p) => p.id === productId);
+    if (!target) return;
+
+    const currentPublished = target.is_published !== false;
+    const updated: Product = { ...target, is_published: !currentPublished };
     setProducts((prev) =>
       prev.map((p) => (p.id === productId ? updated : p))
     );
@@ -368,6 +405,11 @@ export default function AdminDashboardPage() {
   });
 
   const filteredProductsList = products.filter((p) => {
+    if (productStatusFilter === 'published' && p.is_published === false) return false;
+    if (productStatusFilter === 'draft' && p.is_published !== false) return false;
+    if (productStatusFilter === 'in_stock' && (!p.in_stock || (p.stock_count !== undefined && p.stock_count <= 0))) return false;
+    if (productStatusFilter === 'out_of_stock' && p.in_stock && (p.stock_count === undefined || p.stock_count > 0)) return false;
+
     if (productSearchQuery.trim()) {
       const q = productSearchQuery.toLowerCase();
       return (
@@ -752,13 +794,64 @@ export default function AdminDashboardPage() {
       {/* 2. Products Tab with Edit & Delete */}
       {activeTab === 'products' && (
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white rounded-2xl border border-[#e8dece]">
-            <div className="text-xs text-[#6e686c]">
-              Catalog Inventory: <strong>{filteredProductsList.length}</strong> items
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4 bg-white rounded-2xl border border-[#e8dece]">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setProductStatusFilter('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  productStatusFilter === 'all'
+                    ? 'bg-[#781326] text-[#f5e6a8] shadow-sm'
+                    : 'bg-[#f4eee2] text-[#4a4247] hover:bg-[#e8dece]'
+                }`}
+              >
+                All ({products.length})
+              </button>
+              <button
+                onClick={() => setProductStatusFilter('published')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  productStatusFilter === 'published'
+                    ? 'bg-emerald-700 text-white shadow-sm'
+                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+                }`}
+              >
+                <Eye className="w-3 h-3" />
+                <span>Published ({products.filter((p) => p.is_published !== false).length})</span>
+              </button>
+              <button
+                onClick={() => setProductStatusFilter('draft')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  productStatusFilter === 'draft'
+                    ? 'bg-amber-700 text-white shadow-sm'
+                    : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+                }`}
+              >
+                <EyeOff className="w-3 h-3" />
+                <span>Drafts / Hidden ({products.filter((p) => p.is_published === false).length})</span>
+              </button>
+              <button
+                onClick={() => setProductStatusFilter('in_stock')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  productStatusFilter === 'in_stock'
+                    ? 'bg-green-700 text-white shadow-sm'
+                    : 'bg-green-50 text-green-800 hover:bg-green-100 border border-green-200'
+                }`}
+              >
+                In Stock ({products.filter((p) => p.in_stock && (p.stock_count === undefined || p.stock_count > 0)).length})
+              </button>
+              <button
+                onClick={() => setProductStatusFilter('out_of_stock')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  productStatusFilter === 'out_of_stock'
+                    ? 'bg-red-700 text-white shadow-sm'
+                    : 'bg-red-50 text-red-800 hover:bg-red-100 border border-red-200'
+                }`}
+              >
+                Stock Out ({products.filter((p) => !p.in_stock || (p.stock_count !== undefined && p.stock_count <= 0)).length})
+              </button>
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="relative min-w-[240px]">
+              <div className="relative min-w-[220px]">
                 <input
                   type="text"
                   placeholder="Search outfits, SKU, fabric..."
@@ -780,80 +873,120 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProductsList.map((prod) => (
-              <div
-                key={prod.id}
-                className="p-5 rounded-3xl bg-white border border-[#e8dece] shadow-xs flex flex-col justify-between space-y-4 hover:border-[#c99834] transition-all relative group"
-              >
-                <div className="flex gap-4">
-                  <div className="w-20 h-24 rounded-2xl overflow-hidden bg-gray-100 shrink-0 border border-[#e8dece]">
-                    <img
-                      src={prod.images[0]}
-                      alt={prod.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-[#c99834] font-mono font-bold">
-                        {prod.sku}
-                      </span>
+            {filteredProductsList.map((prod) => {
+              const isProdStockOut = !prod.in_stock || (prod.stock_count !== undefined && prod.stock_count <= 0);
+              const isProdPublished = prod.is_published !== false;
+              return (
+                <div
+                  key={prod.id}
+                  className={`p-5 rounded-3xl bg-white border shadow-xs flex flex-col justify-between space-y-4 transition-all relative group ${
+                    !isProdPublished ? 'border-amber-300 bg-amber-50/20' : 'border-[#e8dece] hover:border-[#c99834]'
+                  }`}
+                >
+                  <div className="flex gap-4">
+                    <div className="w-20 h-24 rounded-2xl overflow-hidden bg-gray-100 shrink-0 border border-[#e8dece] relative">
+                      <img
+                        src={prod.images[0]}
+                        alt={prod.title}
+                        className={`w-full h-full object-cover ${isProdStockOut ? 'grayscale-30' : ''}`}
+                      />
+                      {!isProdPublished && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <span className="text-[9px] font-bold text-white bg-amber-600 px-1 py-0.5 rounded">
+                            Draft
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <h3 className="font-serif font-bold text-sm text-[#141215] truncate mt-0.5">
-                      {prod.title}
-                    </h3>
-                    <p className="text-[11px] text-[#8e858a] mt-0.5">{prod.category}</p>
-                    <p className="text-[#781326] font-bold text-sm mt-1">
-                      {formatPrice(prod.price)}
-                    </p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">
-                      Stock: {prod.stock_count || 10} units
-                    </p>
+                    <div className="flex-1 min-w-0 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-[#c99834] font-mono font-bold">
+                          {prod.sku}
+                        </span>
+                      </div>
+                      <h3 className="font-serif font-bold text-sm text-[#141215] truncate mt-0.5">
+                        {prod.title}
+                      </h3>
+                      <p className="text-[11px] text-[#8e858a] mt-0.5">{prod.category}</p>
+                      <p className="text-[#781326] font-bold text-sm mt-1">
+                        {formatPrice(prod.price)}
+                      </p>
+                      <p className="text-[10px] text-gray-500 mt-0.5 font-medium">
+                        Units in Stock: <strong className={isProdStockOut ? 'text-red-600' : 'text-green-700'}>{prod.stock_count || 0}</strong>
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                {/* Card Action Buttons */}
-                <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
-                  <button
-                    onClick={() => handleToggleStock(prod.id)}
-                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase transition-all cursor-pointer ${
-                      prod.in_stock
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {prod.in_stock ? 'In Stock' : 'Out of Stock'}
-                  </button>
-
-                  <div className="flex items-center gap-2">
+                  {/* Status Badges & Quick Toggles */}
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100">
                     <button
-                      onClick={() => handleOpenEditModal(prod)}
-                      className="px-3 py-1.5 rounded-xl bg-[#781326] text-[#f5e6a8] text-xs font-bold hover:bg-[#500a18] transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                      onClick={() => handleToggleStock(prod.id)}
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase transition-all cursor-pointer flex items-center gap-1 ${
+                        !isProdStockOut
+                          ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                          : 'bg-red-100 text-red-800 hover:bg-red-200'
+                      }`}
+                      title="Click to toggle Stock availability"
                     >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>Edit</span>
+                      <span className={`w-1.5 h-1.5 rounded-full ${!isProdStockOut ? 'bg-green-600' : 'bg-red-600'}`} />
+                      <span>{!isProdStockOut ? 'In Stock' : 'Stock Out'}</span>
                     </button>
 
+                    <button
+                      onClick={() => handleTogglePublish(prod.id)}
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase transition-all cursor-pointer flex items-center gap-1 ${
+                        isProdPublished
+                          ? 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200'
+                          : 'bg-amber-100 text-amber-900 hover:bg-amber-200'
+                      }`}
+                      title="Click to toggle Boutique Visibility (Published / Hidden)"
+                    >
+                      {isProdPublished ? (
+                        <>
+                          <Eye className="w-3 h-3 text-emerald-700" />
+                          <span>Published</span>
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff className="w-3 h-3 text-amber-700" />
+                          <span>Draft (Hidden)</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Card Action Buttons */}
+                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs">
                     <Link
                       href={`/product/${prod.slug}`}
                       target="_blank"
-                      className="p-1.5 rounded-lg border border-[#e8dece] text-[#554e53] hover:text-[#781326]"
-                      title="View Live"
+                      className="text-[11px] font-semibold text-[#781326] hover:underline flex items-center gap-1"
                     >
                       <Eye className="w-3.5 h-3.5" />
+                      <span>View Live</span>
                     </Link>
 
-                    <button
-                      onClick={() => handleDeleteProduct(prod.id)}
-                      className="p-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
-                      title="Delete Outfit"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleOpenEditModal(prod)}
+                        className="px-3 py-1.5 rounded-xl bg-[#781326] text-[#f5e6a8] text-xs font-bold hover:bg-[#500a18] transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Edit</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteProduct(prod.id)}
+                        className="p-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
+                        title="Delete Outfit"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -1004,8 +1137,8 @@ export default function AdminDashboardPage() {
                     onChange={(e) => setEditCategory(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
                   >
-                    {CATEGORIES.map((c) => (
-                      <option key={c.slug} value={c.slug}>
+                    {categories.map((c) => (
+                      <option key={c.id || c.slug} value={c.slug}>
                         {c.name}
                       </option>
                     ))}
@@ -1013,20 +1146,33 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
-                    SKU Code *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editSku}
-                    onChange={(e) => setEditSku(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] font-mono focus:outline-none focus:ring-2 focus:ring-[#781326]"
-                  />
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block font-bold text-[#3d383b] uppercase tracking-wider">
+                      SKU Code
+                    </label>
+                    <span className="text-[10px] text-[#8e858a]">Auto-generated if empty</span>
+                  </div>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={editSku}
+                      onChange={(e) => setEditSku(e.target.value)}
+                      placeholder="e.g. NQ-SR-1024 (Auto-generated)"
+                      className="w-full px-4 py-3 pr-24 rounded-xl border border-[#e8dece] bg-white text-[#141215] font-mono focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditSku(generateSku(editCategory, editTitle))}
+                      className="absolute right-2 px-2.5 py-1.5 rounded-lg bg-[#f4eee2] hover:bg-[#e8dece] text-[#781326] text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                      title="Generate new SKU"
+                    >
+                      Auto Gen
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
                     Selling Price (৳ BDT) *
@@ -1053,17 +1199,63 @@ export default function AdminDashboardPage() {
                     className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
-                    Stock Quantity
+              {/* Stock Control & Publication Controls */}
+              <div className="p-4 rounded-2xl bg-[#f4eee2] border border-[#e8dece] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs uppercase tracking-wider text-[#781326]">
+                    Inventory & Store Visibility
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
+                      Stock Availability *
+                    </label>
+                    <select
+                      value={editInStock ? 'true' : 'false'}
+                      onChange={(e) => setEditInStock(e.target.value === 'true')}
+                      className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                    >
+                      <option value="true">In Stock (Available to Order)</option>
+                      <option value="false">Stock Out (Marked Sold Out)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
+                      Stock Quantity (Units) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      value={editStock}
+                      onChange={(e) => setEditStock(Number(e.target.value))}
+                      className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-[#e8dece]">
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={editIsPublished}
+                      onChange={(e) => setEditIsPublished(e.target.checked)}
+                      className="w-4 h-4 rounded text-[#781326] focus:ring-[#781326] cursor-pointer"
+                    />
+                    <div className="text-xs">
+                      <strong className="text-[#141215] block">Publish to Boutique Storefront</strong>
+                      <span className="text-[#6e686c]">
+                        {editIsPublished
+                          ? 'Visible to public boutique shoppers and catalog listings.'
+                          : 'Hidden / Draft mode. Only visible to admins in the portal.'}
+                      </span>
+                    </div>
                   </label>
-                  <input
-                    type="number"
-                    value={editStock}
-                    onChange={(e) => setEditStock(Number(e.target.value))}
-                    className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
-                  />
                 </div>
               </div>
 
@@ -1273,8 +1465,8 @@ export default function AdminDashboardPage() {
                     onChange={(e) => setNewCategory(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
                   >
-                    {CATEGORIES.map((c) => (
-                      <option key={c.slug} value={c.slug}>
+                    {categories.map((c) => (
+                      <option key={c.id || c.slug} value={c.slug}>
                         {c.name}
                       </option>
                     ))}
@@ -1282,16 +1474,29 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
-                    SKU Code *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newSku}
-                    onChange={(e) => setNewSku(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] font-mono focus:outline-none focus:ring-2 focus:ring-[#781326]"
-                  />
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block font-bold text-[#3d383b] uppercase tracking-wider">
+                      SKU Code
+                    </label>
+                    <span className="text-[10px] text-[#8e858a]">Auto-generated if empty</span>
+                  </div>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={newSku}
+                      onChange={(e) => setNewSku(e.target.value)}
+                      placeholder="e.g. NQ-SR-1024 (Auto-generated)"
+                      className="w-full px-4 py-3 pr-24 rounded-xl border border-[#e8dece] bg-white text-[#141215] font-mono focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNewSku(generateSku(newCategory, newTitle))}
+                      className="absolute right-2 px-2.5 py-1.5 rounded-lg bg-[#f4eee2] hover:bg-[#e8dece] text-[#781326] text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                      title="Generate new SKU"
+                    >
+                      Auto Gen
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1319,6 +1524,64 @@ export default function AdminDashboardPage() {
                     onChange={(e) => setNewOriginalPrice(Number(e.target.value))}
                     className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
                   />
+                </div>
+              </div>
+
+              {/* Stock Control & Publication Controls */}
+              <div className="p-4 rounded-2xl bg-[#f4eee2] border border-[#e8dece] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs uppercase tracking-wider text-[#781326]">
+                    Inventory & Store Visibility
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
+                      Stock Availability *
+                    </label>
+                    <select
+                      value={newInStock ? 'true' : 'false'}
+                      onChange={(e) => setNewInStock(e.target.value === 'true')}
+                      className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                    >
+                      <option value="true">In Stock (Available to Order)</option>
+                      <option value="false">Stock Out (Marked Sold Out)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[#3d383b] uppercase tracking-wider mb-1.5">
+                      Stock Quantity (Units) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      value={newStock}
+                      onChange={(e) => setNewStock(Number(e.target.value))}
+                      className="w-full px-4 py-3 rounded-xl border border-[#e8dece] bg-white text-[#141215] focus:outline-none focus:ring-2 focus:ring-[#781326]"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-[#e8dece]">
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={newIsPublished}
+                      onChange={(e) => setNewIsPublished(e.target.checked)}
+                      className="w-4 h-4 rounded text-[#781326] focus:ring-[#781326] cursor-pointer"
+                    />
+                    <div className="text-xs">
+                      <strong className="text-[#141215] block">Publish to Boutique Storefront</strong>
+                      <span className="text-[#6e686c]">
+                        {newIsPublished
+                          ? 'Visible to public boutique shoppers and catalog listings.'
+                          : 'Hidden / Draft mode. Only visible to admins in the portal.'}
+                      </span>
+                    </div>
+                  </label>
                 </div>
               </div>
 

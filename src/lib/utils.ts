@@ -11,6 +11,27 @@ export function generateOrderNumber(): string {
   return `NQ-${timestamp}${random}`;
 }
 
+export function generateSku(categorySlug?: string, title?: string): string {
+  let code = 'SR';
+  if (categorySlug) {
+    const slugUpper = categorySlug.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (slugUpper.includes('SAREE')) code = 'SR';
+    else if (slugUpper.includes('MORJA')) code = 'MR';
+    else if (slugUpper.includes('GUL')) code = 'GB';
+    else if (slugUpper.includes('NOOR') || slugUpper.includes('JAHAN')) code = 'NJ';
+    else if (slugUpper.length >= 2) code = slugUpper.slice(0, 3);
+  } else if (title) {
+    const titleWords = title.trim().split(/\s+/);
+    if (titleWords.length >= 2) {
+      code = (titleWords[0][0] + titleWords[1][0]).toUpperCase();
+    } else {
+      code = title.slice(0, 2).toUpperCase();
+    }
+  }
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  return `NQ-${code}-${randomNum}`;
+}
+
 export function buildWhatsAppOrderLink(item: {
   title: string;
   sku: string;

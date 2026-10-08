@@ -130,9 +130,15 @@ export default function QuickViewModal({ product, onClose }: QuickViewModalProps
                     {formatPrice(product.original_price)}
                   </span>
                 )}
-                <span className="text-xs font-semibold text-[#0b4e39] bg-[#0b4e39]/10 px-2 py-0.5 rounded-full">
-                  In Stock & Ready to Ship
-                </span>
+                {product.in_stock === false || (product.stock_count !== undefined && product.stock_count <= 0) ? (
+                  <span className="text-xs font-semibold text-red-700 bg-red-50 px-2.5 py-0.5 rounded-full border border-red-100">
+                    Stock Out
+                  </span>
+                ) : (
+                  <span className="text-xs font-semibold text-[#0b4e39] bg-[#0b4e39]/10 px-2.5 py-0.5 rounded-full">
+                    In Stock & Ready to Ship
+                  </span>
+                )}
               </div>
 
               <p className="text-xs text-[#554e53] mt-3 leading-relaxed">
@@ -177,32 +183,38 @@ export default function QuickViewModal({ product, onClose }: QuickViewModalProps
             {/* Actions */}
             <div className="space-y-3 pt-4 border-t border-[#e8dece]">
               <div className="flex gap-3">
-                <button
-                  onClick={handleAddToCart}
-                  className="flex-1 py-3.5 px-6 rounded-xl bg-[#781326] text-[#f5e6a8] font-bold text-sm hover:bg-[#500a18] shadow-md transition-all flex items-center justify-center gap-2"
-                >
-                  {addedAnimation ? (
-                    <>
-                      <Check className="w-5 h-5 text-green-400" />
-                      <span>Added to Bag!</span>
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingBag className="w-5 h-5" />
-                      <span>Add to Bag</span>
-                    </>
-                  )}
-                </button>
+                {product.in_stock === false || (product.stock_count !== undefined && product.stock_count <= 0) ? (
+                  <div className="flex-1 py-3.5 px-6 rounded-xl bg-gray-200 text-gray-500 font-bold text-sm text-center">
+                    Currently Stock Out
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleAddToCart}
+                    className="flex-1 py-3.5 px-6 rounded-xl bg-[#781326] text-[#f5e6a8] font-bold text-sm hover:bg-[#500a18] shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {addedAnimation ? (
+                      <>
+                        <Check className="w-5 h-5 text-green-400" />
+                        <span>Added to Bag!</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingBag className="w-5 h-5" />
+                        <span>Add to Bag</span>
+                      </>
+                    )}
+                  </button>
+                )}
 
                 <a
                   href={whatsappLink}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="py-3.5 px-4 rounded-xl bg-[#25d366] text-white hover:bg-[#1eb956] shadow-md transition-all flex items-center justify-center gap-2"
-                  title="Order on WhatsApp"
+                  title="Inquire or Order on WhatsApp"
                 >
                   <MessageCircle className="w-5 h-5" />
-                  <span className="hidden sm:inline text-xs font-bold">WhatsApp</span>
+                  <span className="hidden sm:inline text-xs font-bold">Inquire / Order</span>
                 </a>
               </div>
 

@@ -12,7 +12,7 @@ export const BRAND_INFO = {
   whatsappDisplay: '+880 1580-254707',
   phone: '+880 1580-254707',
   email: 'contact@naqshbyfarjana.com',
-  address: 'Banani & Dhanmondi Studio, Dhaka, Bangladesh',
+  address: 'House 38, Road 1, Sector 5, Uttara, Dhaka 1230',
   bkashNumber: '01734936561 (Send Money)',
   nagadNumber: '01734936561 (Send Money)',
   currency: '৳',

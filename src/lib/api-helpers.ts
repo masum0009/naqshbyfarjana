@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import { INITIAL_PRODUCTS, CATEGORIES } from './products-data';
 import { Order, OrderStatus, Product, Category } from '@/types';
+import { generateSku } from './utils';
 
 function mapSupabaseCategory(c: any): Category {
   return {
@@ -145,6 +146,7 @@ function mapSupabaseProduct(p: any): Product {
       : ['https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=900&q=80'],
     in_stock: p.in_stock !== undefined ? Boolean(p.in_stock) : true,
     stock_count: p.stock_count !== undefined ? Number(p.stock_count) : 10,
+    is_published: p.is_published !== undefined ? Boolean(p.is_published) : true,
     is_featured: Boolean(p.is_featured),
     is_bestseller: Boolean(p.is_bestseller),
     is_new_arrival: Boolean(p.is_new_arrival),
@@ -270,10 +272,11 @@ export async function saveProduct(productPayload: Partial<Product>): Promise<{ s
     ],
     in_stock: productPayload.in_stock !== undefined ? Boolean(productPayload.in_stock) : true,
     stock_count: productPayload.stock_count !== undefined ? Number(productPayload.stock_count) : 10,
+    is_published: productPayload.is_published !== undefined ? Boolean(productPayload.is_published) : true,
     is_featured: Boolean(productPayload.is_featured),
     is_bestseller: Boolean(productPayload.is_bestseller),
     is_new_arrival: Boolean(productPayload.is_new_arrival),
-    sku: productPayload.sku || `NQ-${Math.floor(1000 + Math.random() * 9000)}`,
+    sku: productPayload.sku?.trim() || generateSku(productPayload.category_slug, productPayload.title),
     details: productPayload.details || [],
     care_instructions: productPayload.care_instructions || [],
   };
@@ -302,7 +305,7 @@ export async function saveProduct(productPayload: Partial<Product>): Promise<{ s
     ...cleanProduct,
     original_price: productPayload.original_price ? Number(productPayload.original_price) : undefined,
     id: `prod-${Date.now()}`,
-    category: selectedCategoryObj?.name || 'Royal Sarees',
+    category: productPayload.category || selectedCategoryObj?.name || 'Royal Sarees',
   };
   updateLocalProductsCache(localProd, 'add');
   return { success: true, data: localProd };
@@ -322,10 +325,11 @@ export async function updateProduct(product: Product): Promise<{ success: boolea
     images: product.images,
     in_stock: product.in_stock,
     stock_count: Number(product.stock_count),
+    is_published: product.is_published !== undefined ? Boolean(product.is_published) : true,
     is_featured: product.is_featured,
     is_bestseller: product.is_bestseller,
     is_new_arrival: product.is_new_arrival,
-    sku: product.sku,
+    sku: product.sku?.trim() || generateSku(product.category_slug, product.title),
     details: product.details,
     care_instructions: product.care_instructions,
   };

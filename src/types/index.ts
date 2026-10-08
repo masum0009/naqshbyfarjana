@@ -13,6 +13,7 @@ export interface Product {
   images: string[];
   in_stock: boolean;
   stock_count: number;
+  is_published?: boolean;
   is_featured?: boolean;
   is_bestseller?: boolean;
   is_new_arrival?: boolean;

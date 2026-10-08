@@ -106,13 +106,19 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
       )
     : 0;
 
+  const isOutOfStock =
+    product.in_stock === false ||
+    (product.stock_count !== undefined && product.stock_count <= 0);
+
   const handleAddToCart = () => {
+    if (isOutOfStock) return;
     addToCart(product, selectedSize, quantity);
     setAddedAnimation(true);
     setTimeout(() => setAddedAnimation(false), 2000);
   };
 
   const handleBuyNow = () => {
+    if (isOutOfStock) return;
     addToCart(product, selectedSize, quantity);
     router.push('/checkout');
   };
@@ -138,6 +144,20 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-14">
+      {product.is_published === false && (
+        <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded bg-amber-200 text-amber-800 font-bold uppercase text-[10px]">
+              Draft Mode
+            </span>
+            <span>This outfit is currently unpublished and hidden from the boutique storefront.</span>
+          </div>
+          <Link href="/admin" className="font-bold underline text-amber-950">
+            Open Boutique Admin →
+          </Link>
+        </div>
+      )}
+
       {/* Breadcrumbs */}
       <nav className="flex items-center gap-2 text-xs text-[#8e858a] mb-8 overflow-x-auto whitespace-nowrap">
         <Link href="/" className="hover:text-[#781326]">
@@ -288,9 +308,15 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                   {formatPrice(product.original_price)}
                 </span>
               )}
-              <span className="text-xs font-bold text-[#0b4e39] bg-[#0b4e39]/10 px-3 py-1 rounded-full ml-auto">
-                In Stock ({product.stock_count} units left)
-              </span>
+              {isOutOfStock ? (
+                <span className="text-xs font-bold text-red-700 bg-red-50 px-3 py-1 rounded-full ml-auto border border-red-100">
+                  Stock Out
+                </span>
+              ) : (
+                <span className="text-xs font-bold text-[#0b4e39] bg-[#0b4e39]/10 px-3 py-1 rounded-full ml-auto">
+                  In Stock ({product.stock_count || 10} units left)
+                </span>
+              )}
             </div>
           </div>
 
@@ -352,29 +378,47 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
           {/* Order Actions */}
           <div className="space-y-3 pt-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                onClick={handleAddToCart}
-                className="w-full py-4 px-6 rounded-xl bg-[#781326] text-[#f5e6a8] font-bold text-sm hover:bg-[#500a18] shadow-lg transition-all flex items-center justify-center gap-2"
-              >
-                {addedAnimation ? (
-                  <>
-                    <Check className="w-5 h-5 text-green-400" />
-                    <span>Added to Bag!</span>
-                  </>
-                ) : (
-                  <>
-                    <ShoppingBag className="w-5 h-5" />
-                    <span>Add to Bag</span>
-                  </>
-                )}
-              </button>
+              {isOutOfStock ? (
+                <>
+                  <div className="w-full py-4 px-6 rounded-xl bg-gray-200 text-gray-500 font-bold text-sm text-center flex items-center justify-center">
+                    <span>Currently Stock Out</span>
+                  </div>
+                  <a
+                    href={whatsappLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-4 px-6 rounded-xl bg-[#c99834] text-[#141014] font-bold text-sm hover:bg-[#dfb743] shadow-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    <span>Request Restock / Preorder</span>
+                  </a>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleAddToCart}
+                    className="w-full py-4 px-6 rounded-xl bg-[#781326] text-[#f5e6a8] font-bold text-sm hover:bg-[#500a18] shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {addedAnimation ? (
+                      <>
+                        <Check className="w-5 h-5 text-green-400" />
+                        <span>Added to Bag!</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingBag className="w-5 h-5" />
+                        <span>Add to Bag</span>
+                      </>
+                    )}
+                  </button>
 
-              <button
-                onClick={handleBuyNow}
-                className="w-full py-4 px-6 rounded-xl bg-[#c99834] text-[#141014] font-bold text-sm hover:bg-[#dfb743] shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>Buy Now (Cash on Delivery)</span>
-              </button>
+                  <button
+                    onClick={handleBuyNow}
+                    className="w-full py-4 px-6 rounded-xl bg-[#c99834] text-[#141014] font-bold text-sm hover:bg-[#dfb743] shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>Buy Now (Cash on Delivery)</span>
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Social Direct Buy Buttons */}

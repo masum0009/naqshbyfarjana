@@ -23,9 +23,14 @@ export default function ProductCard({ product }: ProductCardProps) {
       )
     : 0;
 
+  const isOutOfStock =
+    product.in_stock === false ||
+    (product.stock_count !== undefined && product.stock_count <= 0);
+
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isOutOfStock) return;
     const defaultSize = product.sizes[0] || 'Free Size';
     addToCart(product, defaultSize, 1);
   };
@@ -40,7 +45,11 @@ export default function ProductCard({ product }: ProductCardProps) {
   return (
     <>
       <div
-        className="group relative bg-white rounded-2xl overflow-hidden border border-[#e8dece] hover:border-[#c99834] transition-all duration-300 shadow-xs hover:shadow-xl flex flex-col justify-between"
+        className={`group relative bg-white rounded-2xl overflow-hidden border transition-all duration-300 shadow-xs hover:shadow-xl flex flex-col justify-between ${
+          isOutOfStock
+            ? 'border-gray-200 opacity-90'
+            : 'border-[#e8dece] hover:border-[#c99834]'
+        }`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -54,28 +63,38 @@ export default function ProductCard({ product }: ProductCardProps) {
                   : product.images[0]
               }
               alt={product.title}
-              className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+              className={`w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out ${
+                isOutOfStock ? 'grayscale-25' : ''
+              }`}
               loading="lazy"
             />
           </Link>
 
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
-            {discountPercent > 0 && (
-              <span className="px-2.5 py-1 rounded-md bg-[#781326] text-[#f5e6a8] text-[10px] font-bold tracking-wider uppercase shadow-xs">
-                {discountPercent}% OFF
+            {isOutOfStock ? (
+              <span className="px-2.5 py-1 rounded-md bg-[#2d282b] text-[#f4eee2] text-[10px] font-bold tracking-wider uppercase shadow-xs">
+                Stock Out
               </span>
-            )}
-            {product.is_bestseller && (
-              <span className="px-2.5 py-1 rounded-md bg-[#c99834] text-white text-[10px] font-bold tracking-wider uppercase shadow-xs flex items-center gap-1">
-                <Sparkles className="w-2.5 h-2.5" />
-                Bestseller
-              </span>
-            )}
-            {product.is_new_arrival && (
-              <span className="px-2.5 py-1 rounded-md bg-[#0b4e39] text-white text-[10px] font-bold tracking-wider uppercase shadow-xs">
-                New
-              </span>
+            ) : (
+              <>
+                {discountPercent > 0 && (
+                  <span className="px-2.5 py-1 rounded-md bg-[#781326] text-[#f5e6a8] text-[10px] font-bold tracking-wider uppercase shadow-xs">
+                    {discountPercent}% OFF
+                  </span>
+                )}
+                {product.is_bestseller && (
+                  <span className="px-2.5 py-1 rounded-md bg-[#c99834] text-white text-[10px] font-bold tracking-wider uppercase shadow-xs flex items-center gap-1">
+                    <Sparkles className="w-2.5 h-2.5" />
+                    Bestseller
+                  </span>
+                )}
+                {product.is_new_arrival && (
+                  <span className="px-2.5 py-1 rounded-md bg-[#0b4e39] text-white text-[10px] font-bold tracking-wider uppercase shadow-xs">
+                    New
+                  </span>
+                )}
+              </>
             )}
           </div>
 
@@ -104,13 +123,19 @@ export default function ProductCard({ product }: ProductCardProps) {
 
           {/* Bottom quick add hover pill */}
           <div className="absolute bottom-3 inset-x-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0 z-10">
-            <button
-              onClick={handleQuickAdd}
-              className="w-full py-2.5 px-4 rounded-xl bg-[#781326] text-[#f5e6a8] text-xs font-bold shadow-lg hover:bg-[#500a18] transition-all flex items-center justify-center gap-2"
-            >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>Quick Add to Bag</span>
-            </button>
+            {isOutOfStock ? (
+              <div className="w-full py-2.5 px-4 rounded-xl bg-gray-800/90 backdrop-blur-xs text-white text-xs font-bold text-center shadow-lg">
+                Stock Out
+              </div>
+            ) : (
+              <button
+                onClick={handleQuickAdd}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#781326] text-[#f5e6a8] text-xs font-bold shadow-lg hover:bg-[#500a18] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>Quick Add to Bag</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -146,9 +171,15 @@ export default function ProductCard({ product }: ProductCardProps) {
               )}
             </div>
 
-            <span className="text-[11px] font-medium text-[#0b4e39] bg-[#0b4e39]/10 px-2 py-0.5 rounded-full">
-              In Stock
-            </span>
+            {isOutOfStock ? (
+              <span className="text-[11px] font-medium text-red-700 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
+                Stock Out
+              </span>
+            ) : (
+              <span className="text-[11px] font-medium text-[#0b4e39] bg-[#0b4e39]/10 px-2 py-0.5 rounded-full">
+                In Stock
+              </span>
+            )}
           </div>
         </div>
       </div>
