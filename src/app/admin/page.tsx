@@ -46,7 +46,18 @@ export default function AdminDashboardPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [categories, setCategories] = useState<Category[]>(CATEGORIES);
+  const [categories, setCategories] = useState<Category[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('naqsh_custom_categories');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (e) {}
+    }
+    return CATEGORIES;
+  });
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'categories'>('orders');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [productStatusFilter, setProductStatusFilter] = useState<'all' | 'published' | 'draft' | 'in_stock' | 'out_of_stock'>('all');
@@ -289,7 +300,28 @@ export default function AdminDashboardPage() {
     setNewIsPublished(true);
   };
 
-  const handleOpenEditModal = (prod: Product) => {
+  const handleOpenAddProduct = async () => {
+    try {
+      const data = await fetchCategories();
+      if (data && data.length > 0) {
+        setCategories(data);
+        if (!newCategory || !data.some((c) => c.slug === newCategory)) {
+          setNewCategory(data[0].slug);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    setIsAddProductOpen(true);
+  };
+
+  const handleOpenEditModal = async (prod: Product) => {
+    try {
+      const data = await fetchCategories();
+      if (data && data.length > 0) {
+        setCategories(data);
+      }
+    } catch (e) {}
     setEditingProduct(prod);
     setEditTitle(prod.title);
     setEditCategory(prod.category_slug || (categories.find((c) => c.name === prod.category)?.slug) || 'sarees');
@@ -504,7 +536,7 @@ export default function AdminDashboardPage() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setIsAddProductOpen(true)}
+            onClick={handleOpenAddProduct}
             className="px-4 py-2.5 rounded-xl bg-[#781326] text-[#f5e6a8] text-xs font-bold shadow-md hover:bg-[#500a18] transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -863,7 +895,7 @@ export default function AdminDashboardPage() {
               </div>
 
               <button
-                onClick={() => setIsAddProductOpen(true)}
+                onClick={handleOpenAddProduct}
                 className="px-4 py-2 rounded-xl bg-[#781326] text-[#f5e6a8] text-xs font-bold shadow-md hover:bg-[#500a18] transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />

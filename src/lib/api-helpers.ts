@@ -14,7 +14,33 @@ function mapSupabaseCategory(c: any): Category {
   };
 }
 
+function updateLocalCategoriesCache(cat: Category, action: 'add' | 'update' | 'delete') {
+  if (typeof window === 'undefined') return;
+  try {
+    let list: Category[] = [];
+    const saved = localStorage.getItem('naqsh_custom_categories');
+    if (saved) {
+      list = JSON.parse(saved);
+    } else {
+      list = [...CATEGORIES];
+    }
+
+    if (action === 'add') {
+      list = [...list.filter((c) => c.id !== cat.id && c.slug !== cat.slug), cat];
+    } else if (action === 'update') {
+      list = list.map((c) => (c.id === cat.id || c.slug === cat.slug ? cat : c));
+    } else if (action === 'delete') {
+      list = list.filter((c) => c.id !== cat.id && c.slug !== cat.slug);
+    }
+
+    localStorage.setItem('naqsh_custom_categories', JSON.stringify(list));
+  } catch (e) {
+    console.warn('Error updating local categories cache:', e);
+  }
+}
+
 export async function fetchCategories(): Promise<Category[]> {
+  // 1. Fetch live from Supabase
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase
@@ -23,12 +49,33 @@ export async function fetchCategories(): Promise<Category[]> {
         .order('display_order', { ascending: true });
 
       if (!error && data && data.length > 0) {
-        return data.map(mapSupabaseCategory);
+        const mapped = data.map(mapSupabaseCategory);
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('naqsh_custom_categories', JSON.stringify(mapped));
+          } catch (e) {}
+        }
+        return mapped;
       }
     } catch (e) {
       console.warn('Supabase fetchCategories warning:', e);
     }
   }
+
+  // 2. Fallback to localStorage
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('naqsh_custom_categories');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 3. Fallback to static CATEGORIES
   return CATEGORIES;
 }
 
@@ -50,7 +97,9 @@ export async function saveCategory(category: Partial<Category> & { display_order
         .single();
 
       if (!error && data) {
-        return { success: true, data: mapSupabaseCategory(data) };
+        const full = mapSupabaseCategory(data);
+        updateLocalCategoriesCache(full, 'add');
+        return { success: true, data: full };
       } else if (error) {
         console.error('Supabase saveCategory error:', error);
       }
@@ -66,6 +115,7 @@ export async function saveCategory(category: Partial<Category> & { display_order
     description: cleanCategory.description,
     image: cleanCategory.image_url,
   };
+  updateLocalCategoriesCache(localCat, 'add');
   return { success: true, data: localCat };
 }
 
@@ -90,7 +140,9 @@ export async function updateCategory(category: Category & { display_order?: numb
         .single();
 
       if (!error && data) {
-        return { success: true, data: mapSupabaseCategory(data) };
+        const full = mapSupabaseCategory(data);
+        updateLocalCategoriesCache(full, 'update');
+        return { success: true, data: full };
       } else if (error) {
         console.error('Supabase updateCategory error:', error);
       }
@@ -99,6 +151,7 @@ export async function updateCategory(category: Category & { display_order?: numb
     }
   }
 
+  updateLocalCategoriesCache(category, 'update');
   return { success: true, data: category };
 }
 
@@ -116,6 +169,8 @@ export async function deleteCategory(categoryId: string): Promise<{ success: boo
       console.warn('Supabase deleteCategory exception:', e);
     }
   }
+
+  updateLocalCategoriesCache({ id: categoryId } as any, 'delete');
   return { success: true };
 }
 
