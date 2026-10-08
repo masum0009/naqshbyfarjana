@@ -52,7 +52,7 @@ export default function AdminDashboardPage() {
         const saved = localStorage.getItem('naqsh_custom_categories');
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length >= CATEGORIES.length) return parsed;
         }
       } catch (e) {}
     }

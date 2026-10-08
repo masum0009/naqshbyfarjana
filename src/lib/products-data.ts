@@ -37,7 +37,7 @@ export const DELIVERY_ZONES: DeliveryZoneOption[] = [
 
 export const CATEGORIES: Category[] = [
   {
-    id: 'cat-1',
+    id: 'morja',
     name: 'Morja Collection',
     slug: 'morja',
     description: 'Luxury digital lawn 3-piece sets with embroidered organza necklines & pure chiffon dupattas.',
@@ -45,7 +45,7 @@ export const CATEGORIES: Category[] = [
     item_count: 6,
   },
   {
-    id: 'cat-2',
+    id: 'gul-banu',
     name: 'Gul Banu Collection',
     slug: 'gul-banu',
     description: 'Festive cotton silk, delicate zardozi work, and handcrafted organza 3-piece ensembles.',
@@ -53,7 +53,7 @@ export const CATEGORIES: Category[] = [
     item_count: 5,
   },
   {
-    id: 'cat-3',
+    id: 'noor-e-jahan',
     name: 'Noor-E-Jahan Edition',
     slug: 'noor-e-jahan',
     description: 'Opulent raw silk suits and royal partywear adorned with traditional tilla & dabka embroidery.',
@@ -61,12 +61,52 @@ export const CATEGORIES: Category[] = [
     item_count: 4,
   },
   {
-    id: 'cat-4',
+    id: 'sarees',
     name: 'Heritage Sarees',
     slug: 'sarees',
     description: 'Handwoven 84-count Dhakai Jamdani, pure Bengal Muslin, and heirloom Katan Silk masterworks.',
     image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80',
     item_count: 8,
+  },
+  {
+    id: 'three-piece-sets',
+    name: 'Designer 3-Piece Sets',
+    slug: 'three-piece-sets',
+    description: 'Heavy embroidered organza, georgette, and linen cotton luxury salwar suits.',
+    image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=800&q=80',
+    item_count: 6,
+  },
+  {
+    id: 'bridal-festive',
+    name: 'Bridal & Festive Couture',
+    slug: 'bridal-festive',
+    description: 'Heavily zardozi embellished bridal lehengas, ghararas, and evening attire.',
+    image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=800&q=80',
+    item_count: 4,
+  },
+  {
+    id: 'kurtis',
+    name: 'Kurtis & Tunics',
+    slug: 'kurtis',
+    description: 'Chic contemporary kurtis with delicate cutwork, chikankari and thread motifs.',
+    image: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=800&q=80',
+    item_count: 5,
+  },
+  {
+    id: 'shawls-dupattas',
+    name: 'Luxury Shawls & Dupattas',
+    slug: 'shawls-dupattas',
+    description: 'Hand-embroidered velvet shawls and organza gotta-patti statement dupattas.',
+    image: 'https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&w=800&q=80',
+    item_count: 3,
+  },
+  {
+    id: 'guljee',
+    name: 'Guljee',
+    slug: 'guljee',
+    description: 'Signature luxury lawn and printed cotton designer collections.',
+    image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=800&q=80',
+    item_count: 4,
   },
 ];
 
