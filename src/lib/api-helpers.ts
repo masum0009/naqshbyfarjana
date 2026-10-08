@@ -306,32 +306,50 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
   return all.find((p) => p.slug === slug) || null;
 }
 
-export async function saveProduct(productPayload: Partial<Product>): Promise<{ success: boolean; data?: Product }> {
-  const selectedCategoryObj = CATEGORIES.find((c) => c.slug === productPayload.category_slug);
+export async function saveProduct(productPayload: Partial<Product>): Promise<{ success: boolean; data?: Product; error?: string }> {
+  // 1. Resolve matching category for category_id and name
+  const allCategories = await fetchCategories();
+  const matchedCategory =
+    allCategories.find((c) => c.slug === productPayload.category_slug) ||
+    allCategories.find((c) => c.name === productPayload.category) ||
+    CATEGORIES.find((c) => c.slug === productPayload.category_slug);
 
-  const cleanProduct = {
-    title: productPayload.title || '',
-    slug:
-      productPayload.slug ||
-      productPayload.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') ||
-      `prod-${Date.now()}`,
-    description: productPayload.description || 'Bespoke handloom artisan piece curated by Farjana.',
+  const isUUID = (str?: string) => Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str));
+  const categoryId = matchedCategory && isUUID(matchedCategory.id) ? matchedCategory.id : null;
+
+  // 2. Generate clean, unique slug and sku
+  const baseSlug =
+    productPayload.slug ||
+    productPayload.title?.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') ||
+    `outfit-${Date.now()}`;
+  
+  const finalSku =
+    productPayload.sku?.trim() ||
+    generateSku(productPayload.category_slug, productPayload.title);
+
+  const images =
+    productPayload.images && productPayload.images.length > 0
+      ? productPayload.images
+      : ['https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=900&q=80'];
+
+  const dbProductPayload = {
+    title: productPayload.title?.trim() || 'Untitled Outfit',
+    slug: baseSlug,
+    description: productPayload.description?.trim() || 'Bespoke handloom artisan piece curated by Farjana.',
     price: Number(productPayload.price || 0),
     original_price: productPayload.original_price ? Number(productPayload.original_price) : null,
+    category_id: categoryId,
     category_slug: productPayload.category_slug || 'sarees',
-    fabric: productPayload.fabric || '',
-    color: productPayload.color || '',
-    sizes: productPayload.sizes || ['Free Size'],
-    images: productPayload.images || [
-      'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=900&q=80',
-    ],
+    fabric: productPayload.fabric?.trim() || '',
+    color: productPayload.color?.trim() || '',
+    sizes: productPayload.sizes && productPayload.sizes.length > 0 ? productPayload.sizes : ['Free Size'],
+    images: images,
     in_stock: productPayload.in_stock !== undefined ? Boolean(productPayload.in_stock) : true,
     stock_count: productPayload.stock_count !== undefined ? Number(productPayload.stock_count) : 10,
-    is_published: productPayload.is_published !== undefined ? Boolean(productPayload.is_published) : true,
     is_featured: Boolean(productPayload.is_featured),
     is_bestseller: Boolean(productPayload.is_bestseller),
     is_new_arrival: Boolean(productPayload.is_new_arrival),
-    sku: productPayload.sku?.trim() || generateSku(productPayload.category_slug, productPayload.title),
+    sku: finalSku,
     details: productPayload.details || [],
     care_instructions: productPayload.care_instructions || [],
   };
@@ -340,16 +358,17 @@ export async function saveProduct(productPayload: Partial<Product>): Promise<{ s
     try {
       let { data, error } = await supabase
         .from('products')
-        .insert([cleanProduct])
+        .insert([dbProductPayload])
         .select()
         .single();
 
-      // If the is_published column does not exist yet on Supabase, retry without it
-      if (error && error.message && error.message.includes('is_published')) {
-        const { is_published, ...productWithoutPublished } = cleanProduct;
+      // If slug conflict, append timestamp suffix and retry
+      if (error && error.code === '23505' && (error.message.includes('slug') || error.message.includes('sku'))) {
+        const uniqueSlug = `${baseSlug}-${Math.floor(100 + Math.random() * 900)}`;
+        const uniqueSku = `${finalSku}-${Math.floor(10 + Math.random() * 90)}`;
         const retry = await supabase
           .from('products')
-          .insert([productWithoutPublished])
+          .insert([{ ...dbProductPayload, slug: uniqueSlug, sku: uniqueSku }])
           .select()
           .single();
         data = retry.data;
@@ -358,6 +377,7 @@ export async function saveProduct(productPayload: Partial<Product>): Promise<{ s
 
       if (!error && data) {
         const full = mapSupabaseProduct(data);
+        full.is_published = productPayload.is_published !== undefined ? Boolean(productPayload.is_published) : true;
         updateLocalProductsCache(full, 'add');
         return { success: true, data: full };
       } else if (error) {
@@ -368,23 +388,34 @@ export async function saveProduct(productPayload: Partial<Product>): Promise<{ s
     }
   }
 
+  // Fallback if offline
   const localProd: Product = {
-    ...cleanProduct,
-    original_price: productPayload.original_price ? Number(productPayload.original_price) : undefined,
+    ...dbProductPayload,
     id: `prod-${Date.now()}`,
-    category: productPayload.category || selectedCategoryObj?.name || 'Royal Sarees',
+    original_price: productPayload.original_price ? Number(productPayload.original_price) : undefined,
+    category: matchedCategory?.name || 'Heritage Sarees',
+    is_published: productPayload.is_published !== undefined ? Boolean(productPayload.is_published) : true,
   };
   updateLocalProductsCache(localProd, 'add');
   return { success: true, data: localProd };
 }
 
-export async function updateProduct(product: Product): Promise<{ success: boolean; data?: Product }> {
-  const cleanPayload = {
+export async function updateProduct(product: Product): Promise<{ success: boolean; data?: Product; error?: string }> {
+  const allCategories = await fetchCategories();
+  const matchedCategory =
+    allCategories.find((c) => c.slug === product.category_slug) ||
+    allCategories.find((c) => c.name === product.category);
+
+  const isUUID = (str?: string) => Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str));
+  const categoryId = matchedCategory && isUUID(matchedCategory.id) ? matchedCategory.id : null;
+
+  const dbUpdatePayload = {
     title: product.title,
     slug: product.slug,
     description: product.description,
     price: Number(product.price),
     original_price: product.original_price ? Number(product.original_price) : null,
+    category_id: categoryId,
     category_slug: product.category_slug,
     fabric: product.fabric,
     color: product.color,
@@ -392,7 +423,6 @@ export async function updateProduct(product: Product): Promise<{ success: boolea
     images: product.images,
     in_stock: product.in_stock,
     stock_count: Number(product.stock_count),
-    is_published: product.is_published !== undefined ? Boolean(product.is_published) : true,
     is_featured: product.is_featured,
     is_bestseller: product.is_bestseller,
     is_new_arrival: product.is_new_arrival,
@@ -403,28 +433,20 @@ export async function updateProduct(product: Product): Promise<{ success: boolea
 
   if (isSupabaseConfigured && supabase) {
     try {
-      let { data, error } = await supabase
-        .from('products')
-        .update(cleanPayload)
-        .eq('id', product.id)
-        .select()
-        .single();
-
-      // If the is_published column does not exist yet on Supabase, retry without it
-      if (error && error.message && error.message.includes('is_published')) {
-        const { is_published, ...payloadWithoutPublished } = cleanPayload;
-        const retry = await supabase
-          .from('products')
-          .update(payloadWithoutPublished)
-          .eq('id', product.id)
-          .select()
-          .single();
-        data = retry.data;
-        error = retry.error;
+      const isRecordUUID = isUUID(product.id);
+      let query = supabase.from('products').update(dbUpdatePayload);
+      
+      if (isRecordUUID) {
+        query = query.eq('id', product.id);
+      } else {
+        query = query.eq('slug', product.slug);
       }
+
+      const { data, error } = await query.select().single();
 
       if (!error && data) {
         const full = mapSupabaseProduct(data);
+        full.is_published = product.is_published !== undefined ? Boolean(product.is_published) : true;
         updateLocalProductsCache(full, 'update');
         return { success: true, data: full };
       } else if (error) {

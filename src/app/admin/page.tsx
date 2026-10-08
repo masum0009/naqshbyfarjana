@@ -286,10 +286,9 @@ export default function AdminDashboardPage() {
 
     const res = await saveProduct(productPayload);
     if (res.data) {
-      setProducts((prev) => [res.data!, ...prev]);
-    } else {
-      await loadProducts();
+      setProducts((prev) => [res.data!, ...prev.filter((p) => p.id !== res.data!.id && p.slug !== res.data!.slug)]);
     }
+    await loadProducts();
 
     setIsAddProductOpen(false);
     setNewTitle('');
@@ -380,7 +379,11 @@ export default function AdminDashboardPage() {
       prev.map((p) => (p.id === editingProduct.id ? updatedProduct : p))
     );
 
-    await updateProduct(updatedProduct);
+    const res = await updateProduct(updatedProduct);
+    if (res.data) {
+      setProducts((prev) => prev.map((p) => (p.id === res.data!.id || p.slug === res.data!.slug ? res.data! : p)));
+    }
+    await loadProducts();
     setEditingProduct(null);
   };
 
